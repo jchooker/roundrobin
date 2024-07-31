@@ -1,0 +1,31 @@
+﻿@model TechListApp.ViewModels.TechViewModel
+
+<div class="container-fluid" data-last-selected-index="@Model.LastSelectedIndex">
+    @for (int i = 0; i < Model.Names.Count; i++)
+    {
+        var name = Model.Names[i];
+        var nextIndex = (i + 1) % Model.Names.Count;
+        //if (Model.LastSelectedIndex == Model.Names.Count - 1) //<--take care of this in click event response?
+        var isLastSelected = (i == Model.LastSelectedIndex);
+        var classString = isLastSelected ? "btn-danger" : "border-info";
+        var nextColorClass = (i == Model.LastSelectedIndex + 1) ? "border-warning btn-success shadow text-warning" : "";
+        var disabledAttrib = (i == Model.LastSelectedIndex + 1) ? "" : "disabled";
+        var disabledAria = (i == Model.LastSelectedIndex + 1) ? "false" : "true";
+        var prevColorClass = (i == Model.LastSelectedIndex) ? "btn-danger border-secondary" : "";
+        var defaults = ((i != Model.LastSelectedIndex) && (i != Model.LastSelectedIndex + 1)) ? "border-dark" : "shadow-sm";
+        <div class="row">
+            <div class="btn border col-4 text-center py-4 border-3 my-2 @nextColorClass @prevColorClass @defaults @disabledAttrib" data-index="@i" aria-disabled="@disabledAria">
+                <h2>@name</h2>
+            </div>
+        </div>
+    }
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/techs.css" />
+}
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/5.0.9/signalr.min.js"></script>
+    <script src="~/js/techs.js" type="text/javascript"></script>
+}

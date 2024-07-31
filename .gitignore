@@ -1,0 +1,167 @@
+# .gitignore for ASP.NET Core MVC project
+
+# General
+bin/
+obj/
+*.log
+*.vs/
+.vscode/
+*.user
+*.userosscache
+*.sln.docstates
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Rider / JetBrains
+.idea/
+.idea_modules/
+
+# Visual Studio Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Visual Studio
+.vs/
+*.csproj.user
+*.csproj.suo
+*.user
+*.suo
+*.userprefs
+*.tmproj
+*.tmproj.user
+*.ncrunchsolution
+*.ncrunchproject
+*.crunchsolution
+*.crunchproject
+*.sln.docstates
+
+# ASP.NET Core
+appsettings.json
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Staging.json
+
+# EF Core Migrations
+**/Migrations/
+
+# Database
+*.mdf
+*.ldf
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+*.tlog
+*.log/*
+log/
+*.log
+**/*.log
+
+# npm
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Environment variables
+.env
+
+# Jaspersoft / BIRT Reports
+*.jasper
+*.jrxml
+*.rptdesign
+
+# NuGet
+*.nupkg
+packages/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Entity Framework
+*context.cs
+*context.tt
+*context.t4
+*edmx
+*.edmx.diagram
+
+# Publish
+publish/
+*.Publish.xml
+*.pfx
+*.pubxml
+*.publishsettings
+.history
+
+# Azure
+local.settings.json
+ServiceConfiguration.Local.cscfg
+ServiceConfiguration.Cloud.cscfg
+*.svclog
+**/.publishsettings
+publishProfiles/
+
+# MSBuild Binary and Log Files
+*.dll
+*.exe
+*.exes
+*.exe.config
+*.config
+*.ilk
+*.lib
+*.nupkg
+*.obj
+*.pkg
+*.pdb
+*.rsp
+*.nuget
+*.cache
+*.vsix
+*.pki
+
+# Temporary files
+*.tmp
+*.temp
+*.tmp.*
+
+# Backup files
+*.bak
+*.old
+*.backup
+*.swp
+*.swo
+
+# Packages
+packages/
+
+# StyleCop
+StyleCopReport.xml
+StyleCopReport.txt
+
+# Resharper
+_Resharper.*
+*.ReSharper
+resharper-temp/
+_ReSharper*/
+resharper.xml
+
+# Coverage
+coverage/
+*.coverage
+*.coveragexml
+*.codecov
+*.testhost.*
+*TestResults*
+*.TestResults*
+
+# NCrunch
+*.ncrunchstatus
+*.ncrunchsolution
+*.ncrunchproject
+*_ncrunch_*
