@@ -1,40 +1,108 @@
 ﻿$(document).ready(function () {
+    //console.log($('div[class*="toggle-btn"]').length);
+    //network location: \\adhspace\ITSShare\donotdel-localapps\roundrobin
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl("/listhub")
+        .build();
+
     let lastSelectedIndex = parseInt($('.container-fluid').data('last-selected-index'));
-    const total = $(".col-4").length;
+    const total = $(".col-6").length;
+
+    //connection.start().then(() => { //reactivate for signalr?
+    //    connection.invoke("UpdateLastSelectedIndex", ButtonStateStore.LastSelectedIndex);
+    //}).catch(function (err) {
+    //    return console.error(err.toString());
+    //});
+
+    connection.on("ReceiveSelection", function (index) {
+        updateBtns(index);
+    });
 
     function updateBtns(index) {
         //const $allCols = $(".col-4");
         const $curr = $('[data-index="' + index + '"]');
+        const $currChild = $('[data-parent-index="' + index + '"]');
         const $next = $('[data-index="' + ((index + 1) % total) + '"]');
+        const $nextChild = $('[data-parent-index="' + ((index + 1) % total) + '"]');
 
         //$allCols.removeClass("btn-success btn-danger btn-success-in-1 btn-success-out-1 btn-danger-out-1")
-        //    .addClass("slide-in-success-1 slide-out-success-1 slide-out-danger-1 disabled") //custom class resets
+        //    .addClass("slide-in-success slide-out-success slide-out-danger disabled") //custom class resets
         btnDefaults();
-        $next.addClass('btn-success-in-1');
+        $next.addClass('btn-success-in-1').removeClass('disabled');
         $curr.addClass('btn-success-out-1');
         setTimeout(() => {
-            $curr.removeClass('btn-success-out-1 btn-success text-warning').addClass('btn-danger border-secondary');
-            $next.removeClass('btn-success-in-1 border-dark').addClass('btn-success text-warning border-warning');
-        }, 1000);
+            $curr.removeClass('btn-success-out-1 btn-success text-warning border-warning')
+                .addClass('btn-danger border-secondary text-light');
+            $next.removeClass('btn-success-in-1 border-secondary text-secondary')
+                .addClass('btn-success text-warning border-warning')
+                .prop("aria-disabled", "false");
+        }, 500);
+    }
+
+    function overrideOrder(index) {
+        const $curr = $('[data-index="' + index + '"]');
     }
 
     function btnDefaults() {
-        const $allCols = $(".col-4");
-        $allCols.removeClass("btn-success btn-danger btn-success-in-1 btn-success-out-1 btn-danger-out-1")
-            .addClass("slide-in-success-1 slide-out-success-1 slide-out-danger-1 disabled") //custom class resets
+        const $allCols = $(".col-6");
+        $allCols.removeClass("btn-success btn-danger btn-success-in-1 btn-success-out-1 btn-danger-out-1 text-light")
+            .addClass("disabled")
+            .prop("aria-disabled", "true");        //custom class resets
     }
 
-    $(".col-4").on("click", function (event) {
+    $(".col-6").on("click", function (event) {
         const index = $(this).data("index");
         if (!$(this).hasClass("disabled")) {
-            lastSelectedIndex = (index + 1) % total;
+            lastSelectedIndex = index % total;
             updateBtns(lastSelectedIndex);
 
+            connection.invoke("UpdateLastSelectedIndex", lastSelectedIndex).catch(function (err) {
+                console.error(err.toString());
+            });
+
             //update data attrib
-            $('.container-fluid').data('last-selected-index', lastSelectedIndex);
+            $('.container-fluid').data('last-selected-index', (lastSelectedIndex + 1) % total);
         }
         event.preventDefault();
-    })
+    });
+
+    //toggle availability button
+    $('.btn-row-group div[class*="toggle-btn"]').on("click", function (event) {
+        event.preventDefault(); //<--remove if unnecessary
+        var imgChild = $(this).find('img');
+
+        if (imgChild.hasClass('black-to-green')) imgChild.removeClass('black-to-green').addClass('black-to-red');
+        else imgChild.removeClass('black-to-red').addClass('black-to-green');
+
+        var $thisBtn = $(this)
+        var techId = $thisBtn.data("id");
+
+        //updateAvailableTechsCount();
+
+        $.post("/Techs/ToggleAvailability", { techId: techId })
+            .done(function (response) {
+                if (response.success) {
+                    /*$thisBtn.text(response.isAvailable ? "Deactivate" : "Activate");*/ //<--some version of this?
+                    updateAvailableTechsCount();
+                }
+            })
+            .fail(function (jqXHR) {
+                alert("Error toggling Availability. Please try again.");
+            });
+    });
+
+    function updateAvailableTechsCount() {
+        $.get("/Techs/GetAvailableTechsCount")
+            .done(function (response) {
+                if (response.availableCount !== undefined) {
+                    //utilize the # available
+                    console.log(response.availableCount);
+                }
+            })
+            .fail(function () {
+                alert("Error fetching number of available techs.");
+            });
+    }
 });
 //enable all of this w/ signalr implementation
     //const connection = new signalR.HubConnectionBuilder()

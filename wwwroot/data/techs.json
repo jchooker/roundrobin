@@ -1,0 +1,33 @@
+{
+  "LastSelectedId": 0,
+  "techs": [
+    {
+      "Id": 1,
+      "Name": "Aaron Roberts",
+      "IsCurrentAssignee": false,
+      "IsHereToday": true,
+      "IsAvailable": true
+    },
+    {
+      "Id": 2,
+      "Name": "Joe Ryburn",
+      "IsCurrentAssignee": true,
+      "IsHereToday": true,
+      "IsAvailable": true
+    },
+    {
+      "Id": 3,
+      "Name": "Kurrine Montgomery",
+      "IsCurrentAssignee": false,
+      "IsHereToday": false,
+      "IsAvailable": true
+    },
+    {
+      "Id": 4,
+      "Name": "Shane Dutton",
+      "IsCurrentAssignee": false,
+      "IsHereToday": false,
+      "IsAvailable": true
+    }
+  ]
+}

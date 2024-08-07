@@ -1,21 +1,33 @@
-﻿@model TechListApp.ViewModels.TechViewModel
+﻿@model TechListApp.ViewModels.QueueViewModel
 
 <div class="container-fluid" data-last-selected-index="@Model.LastSelectedIndex">
-    @for (int i = 0; i < Model.Names.Count; i++)
+    @for (int i = 0; i < Model.Techs.Count; i++)
     {
-        var name = Model.Names[i];
-        var nextIndex = (i + 1) % Model.Names.Count;
+        var tech = Model.Techs[i];
+        var techName = Model.Techs[i].Name;
+        var nextIndex = (i + 1) % Model.Techs.Count;
+        var nextWithZero = (Model.LastSelectedIndex + 1) % Model.Techs.Count;
         //if (Model.LastSelectedIndex == Model.Names.Count - 1) //<--take care of this in click event response?
         var isLastSelected = (i == Model.LastSelectedIndex);
+        var auxBtnClasses = "btn col-1 my-2 border border-2 border-secondary d-flex align-items-center justify-content-center opacity-50 shadow hover-effect-1 bg-light";
         var classString = isLastSelected ? "btn-danger" : "border-info";
-        var nextColorClass = (i == Model.LastSelectedIndex + 1) ? "border-warning btn-success shadow text-warning" : "";
-        var disabledAttrib = (i == Model.LastSelectedIndex + 1) ? "" : "disabled";
-        var disabledAria = (i == Model.LastSelectedIndex + 1) ? "false" : "true";
+        var nextColorClass = (i == nextWithZero) ? "border-warning btn-success shadow text-warning" : "";
+        var disabledAttrib = (i == nextWithZero) ? "" : "disabled";
+        var disabledAria = (i == nextWithZero) ? "false" : "true";
         var prevColorClass = (i == Model.LastSelectedIndex) ? "btn-danger border-secondary" : "";
-        var defaults = ((i != Model.LastSelectedIndex) && (i != Model.LastSelectedIndex + 1)) ? "border-dark" : "shadow-sm";
-        <div class="row">
-            <div class="btn border col-4 text-center py-4 border-3 my-2 @nextColorClass @prevColorClass @defaults @disabledAttrib" data-index="@i" aria-disabled="@disabledAria">
-                <h2>@name</h2>
+        var defaults = ((i != Model.LastSelectedIndex) && (i != nextWithZero)) ? "border-secondary" : "shadow-sm";
+        var whetherXVisible = (i != nextWithZero) ? "visible" : "invisible";
+        var greenOrRed = (Model.Techs[i].IsAvailable) ? "black-to-green" : "black-to-red";
+        <div class="row align-items-stretch btn-row-group">
+            <div class="@auxBtnClasses me-4 toggle-btn-@i" data-parent-index="@i" data-id="@tech.Id">
+                <img src="~/img/toggle1.webp" class="rounded img-fluid @greenOrRed" alt="toggle" />
+            </div>
+            <div class="btn border col-6 text-center py-4 border-3 my-2 slide-in-success slide-out-success slide-out-danger  @nextColorClass @prevColorClass @defaults @disabledAttrib" data-index="@i" aria-disabled="@disabledAria">
+                <h2>@techName</h2>
+            </div>
+            @* wrap in a span to make it hoverable *@
+            <div class="@auxBtnClasses @whetherXVisible ms-4 override-btn-@i" data-parent-index="@i" data-id="@tech.Id">
+                <img src="~/img/down_left.webp" class="rounded img-fluid" alt="down-left-arrow" />
             </div>
         </div>
     }
