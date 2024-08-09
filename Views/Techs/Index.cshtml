@@ -1,37 +1,109 @@
 ﻿@model TechListApp.ViewModels.QueueViewModel
+@{
+    //****SHOULD HAVE DONE THIS FROM THE GET-GO: MAP ID TO QUEUEID!!/
+    var idToQueueIdMap = Model.Techs.ToDictionary(t => t.Id, t => t.QueueId);
+    var queueIdToIdMap = Model.Techs.ToDictionary(t => t.QueueId, t => t.Id);
+    int i = 0; //for index check
+    var activeTechs = Model.Techs.Where(t => t.IsAvailable).ToList(); //*******v2/
+    var activeCount = activeTechs.Count; //*******v2/
+    var lastAssignedQueueId = idToQueueIdMap[Model.LastSelectedIndex + 1]; //*******v2/
+    var firstActiveQueueId = activeTechs.Any() ? activeTechs.First().QueueId : -1; //*******v2/
 
-<div class="container-fluid" data-last-selected-index="@Model.LastSelectedIndex">
-    @for (int i = 0; i < Model.Techs.Count; i++)
+    //determine initial curr selectee (green btn)
+    int currSelecteeQueueId = -1;
+    if (activeCount > 0)
     {
-        var tech = Model.Techs[i];
-        var techName = Model.Techs[i].Name;
-        var nextIndex = (i + 1) % Model.Techs.Count;
-        var nextWithZero = (Model.LastSelectedIndex + 1) % Model.Techs.Count;
-        //if (Model.LastSelectedIndex == Model.Names.Count - 1) //<--take care of this in click event response?
-        var isLastSelected = (i == Model.LastSelectedIndex);
-        var auxBtnClasses = "btn col-1 my-2 border border-2 border-secondary d-flex align-items-center justify-content-center opacity-50 shadow hover-effect-1 bg-light";
-        var classString = isLastSelected ? "btn-danger" : "border-info";
-        var nextColorClass = (i == nextWithZero) ? "border-warning btn-success shadow text-warning" : "";
-        var disabledAttrib = (i == nextWithZero) ? "" : "disabled";
-        var disabledAria = (i == nextWithZero) ? "false" : "true";
-        var prevColorClass = (i == Model.LastSelectedIndex) ? "btn-danger border-secondary" : "";
-        var defaults = ((i != Model.LastSelectedIndex) && (i != nextWithZero)) ? "border-secondary" : "shadow-sm";
-        var whetherXVisible = (i != nextWithZero) ? "visible" : "invisible";
-        var greenOrRed = (Model.Techs[i].IsAvailable) ? "black-to-green" : "black-to-red";
+        currSelecteeQueueId = activeTechs.First().QueueId;
+        foreach (var tech in activeTechs)
+        {
+            if (tech.QueueId > Model.LastSelectedIndex)
+            {
+                currSelecteeQueueId = tech.QueueId;
+                break;
+            }
+        }
+    }
+}
+<div class="container-fluid" data-last-selected-index="@Model.LastSelectedIndex" data-minimum-active="@Model.HasReachedMinimumActiveTechs">
+@*     @for (int i = 0; i < Model.Techs.Count; i++) *@
+    @foreach (var tech in Model.Techs)
+    {
+        var isLastAssigned = (tech.QueueId == idToQueueIdMap[Model.LastSelectedIndex + 1]);
+        var isActive = tech.IsAvailable;
+        var isCurrentSelectee = (tech.QueueId == currSelecteeQueueId);
+        var isOnlyOneActive = (tech.IsAvailable && activeCount == 1);
+        var isNextActive = isActive && !isLastAssigned; //<--not for scenarios where there is only 1 though?
+
+        var auxBtnClasses = "btn col-1 my-2 border border-2 border-secondary d-flex align-items-center justify-content-center shadow hover-effect-1 bg-light";
+        var techButtonClasses = "btn border col-6 text-center py-4 border-3 my-2";
+
+        //var canOverride = (isActive && )
+
+        if (isOnlyOneActive && isActive)
+        {
+            techButtonClasses += " btn-success";
+        }
+
+        else if (isCurrentSelectee)
+        {
+            techButtonClasses += " btn-success text-warning border-warning";
+        }
+
+        else if (isLastAssigned)
+        {
+            techButtonClasses += " btn-danger text-light border-secondary";
+        }
+
+        var disabledAttrib = isLastAssigned || !isActive ? "disabled" : "";
+        var ariaDisabled = disabledAttrib == "disabled" ? "true" : "false";
+        var overrideVisibility = (isActive && !isCurrentSelectee) ? "visible" : "invisible";
+        
         <div class="row align-items-stretch btn-row-group">
-            <div class="@auxBtnClasses me-4 toggle-btn-@i" data-parent-index="@i" data-id="@tech.Id">
-                <img src="~/img/toggle1.webp" class="rounded img-fluid @greenOrRed" alt="toggle" />
+            <div class="@auxBtnClasses opacity-75 me-4 toggle-btn-@tech.QueueId" data-parent-index="@tech.QueueId" data-id="@tech.Id" data-queue-id="@tech.QueueId">
+                <img src="~/img/toggle1.webp" class="rounded img-fluid @(isActive ? "black-to-green" : "black-to-red")" alt="toggle" />
             </div>
-            <div class="btn border col-6 text-center py-4 border-3 my-2 slide-in-success slide-out-success slide-out-danger  @nextColorClass @prevColorClass @defaults @disabledAttrib" data-index="@i" aria-disabled="@disabledAria">
-                <h2>@techName</h2>
+            <div class="@techButtonClasses tech-queue-btn-@tech.QueueId" data-index="@tech.QueueId" data-added-as-id="@tech.QueueId" aria-disabled="@ariaDisabled">
+                <h2>@tech.Name</h2>
             </div>
-            @* wrap in a span to make it hoverable *@
-            <div class="@auxBtnClasses @whetherXVisible ms-4 override-btn-@i" data-parent-index="@i" data-id="@tech.Id">
+            <div class="@auxBtnClasses opacity-50 ms-4 override-btn-@tech.QueueId @(isNextActive ? "visible" : "invisible")" data-parent-index="@tech.QueueId" data-id="@tech.Id" data-queue-id="@tech.QueueId">
                 <img src="~/img/down_left.webp" class="rounded img-fluid" alt="down-left-arrow" />
             </div>
         </div>
     }
 </div>
+@*   %%%%%%%%%%  //{
+       //var tech = Model.Techs[i]; %%%%%%%%%%%%*@
+@*%%%%%%%%%%         var techName = tech.Name;
+        var nextIndex = (i + 1) % Model.Techs.Count;
+        var nextWithZero = (tech.IsOnlyOneAvailable) ? tech.QueueId : (Model.LastSelectedIndex + 1) % Model.Techs.Count; %%%%%%%%%*@
+@*   %%%%%%%%%%%%%%%      //***SERIOUS REWORK OF NEXTWITHZERO AND OVERRIDE BTNS NEEDED! 08/09/2024
+        //if (Model.LastSelectedIndex == Model.Names.Count - 1) //<--take care of this in click event response?%%%%%%%%%%%%%%%% *@
+@* ***************        var isLastSelected = (i == Model.LastSelectedIndex);
+        var auxBtnClasses = "btn col-1 my-2 border border-2 border-secondary d-flex align-items-center justify-content-center shadow hover-effect-1 bg-light";************** *@
+        @*%%%%%%%%%%%%%% //*************NEED TO FIGURE OUT ALL QUEUEID VS ID SCENARIOS!!!!!!!!!! %%%%%%%%%%%%%*@
+@*********         var nextColorClass = (i == nextWithZero) ? "border-warning btn-success shadow text-warning" : ""; ***********@
+        @* var disabledAttrib = (i == nextWithZero) ? "" : "disabled"; *@
+@**************         var disabledAttrib = (tech.IsAvailable) ? "" : "disabled";
+        var disabledAria = (i == nextWithZero) ? "false" : "true";
+        var prevColorClass = (i == Model.LastSelectedIndex) ? "btn-danger border-secondary" : "";
+        var defaults = ((i != Model.LastSelectedIndex) && (i != nextWithZero)) ? "border-secondary" : "shadow-sm";
+        var whetherXVisible = (i != nextWithZero) ? "visible" : "invisible";
+        var greenOrRed = (tech.IsAvailable) ? "black-to-green" : "black-to-red";
+        <div class="row align-items-stretch btn-row-group">
+            <div class="@auxBtnClasses opacity-75 me-4 toggle-btn-@i" data-parent-index="@tech.QueueId" data-id="@tech.Id" data-added-as-id="@i">
+                <img src="~/img/toggle1.webp" class="rounded img-fluid @greenOrRed" alt="toggle" />
+            </div>
+            <div class="btn border col-6 text-center py-4 border-3 my-2 slide-in-success slide-out-success slide-out-danger  @nextColorClass @prevColorClass @defaults @disabledAttrib" data-index="@i" data-added-as-id="@i" aria-disabled="@disabledAria">
+                <h2>@techName</h2>
+            </div> *************@
+            @* wrap in a span to make it hoverable *@
+@*********             <div class="@auxBtnClasses @whetherXVisible opacity-50 ms-4 override-btn-@i" data-parent-index="@tech.QueueId" data-id="@tech.Id" data-added-as-id="@i">
+                <img src="~/img/down_left.webp" class="rounded img-fluid" alt="down-left-arrow" />
+            </div>
+        </div>
+        i++;
+    } *********@
+@********</div>***********@
 
 @section Styles {
     <link rel="stylesheet" href="~/css/techs.css" />

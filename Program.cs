@@ -6,15 +6,19 @@ using TechListApp.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+//add logging
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
 //Add DbContext
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+//builder.Services.AddDbContext<ApplicationDbContext>(options =>
+//    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 //Add SignalR
-builder.Services.AddSignalR();
+//builder.Services.AddSignalR();
 
 //Config Windows Auth
 builder.Services.AddAuthentication(NegotiateDefaults.AuthenticationScheme)
@@ -39,7 +43,12 @@ var jsonFilePath = Path.Combine(app.Environment.ContentRootPath, "wwwroot/data/t
 //}
 
 // Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
+
+else
 {
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
@@ -57,6 +66,6 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Techs}/{action=Index}/{id?}");
 
-app.MapHub<ListHub>("/listhub");
+//app.MapHub<ListHub>("/listhub");
 
 app.Run();

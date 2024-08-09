@@ -25,13 +25,28 @@ namespace TechListApp.Services
             }
 
             var jsonData = File.ReadAllText(JsonFilePath);
-            return JsonSerializer.Deserialize<TechData>(jsonData) ?? new TechData { LastSelectedId = -1, Techs = new List<Tech>() };
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+            return JsonSerializer.Deserialize<TechData>(jsonData, options) ?? new TechData { LastSelectedId = -1, Techs = new List<Tech>() };
         }
 
         public void WriteToJson(TechData data)
         {
             var jsonData = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(JsonFilePath, jsonData);
+        }
+
+        public void ToggleAvailability(int techId)
+        {
+            var data = ReadFromJson();
+            var tech = data.Techs.FirstOrDefault(t => t.Id == techId);
+            if (tech != null)
+            {
+                tech.IsAvailable = !tech.IsAvailable;
+                WriteToJson(data);
+            }
         }
 
         public void UpdateLastSelectedId(int techId)
