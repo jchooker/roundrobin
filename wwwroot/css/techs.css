@@ -14,6 +14,8 @@
 .slide-in-success {
     transition: background-color 0.5s ease-in, color 0.5s ease-in, border-color 0.5s ease-in, border-width 0.5s ease-in, border-color 0.5s ease-in;
 }
+
+.slide-danger-to-success,
 .slide-out-success-false,
 .slide-out-success,
 .slide-out-danger {
@@ -98,6 +100,24 @@
 
 .btn-danger-out-1 {
     animation: slide-out-danger 0.5s ease-in;
+}
+
+@keyframes slide-danger-to-success {
+    0% {
+        background-color: var(--danger-color);
+        color: var(--secondary-color);
+        border: solid 3px var(--secondary-color);
+    }
+
+    100% {
+        background-color: var(--success-color);
+        color: var(--warning-color);
+        border: solid 3px var(--warning-color) !important;
+    }
+}
+
+.btn-danger-to-success {
+    animation: slide-danger-to-success 0.5s ease-in;
 }
 
 .hover-effect-1:hover {

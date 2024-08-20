@@ -1,10 +1,20 @@
 ﻿@model TechListApp.ViewModels.QueueViewModel
-@{
+
+@Html.Hidden("CurrentSelectee", Model.CurrentSelectee, new {id = "CurrentSelectee"})
+@Html.Hidden("LastSelectedIndex", Model.LastSelectedIndex, new {id = "LastSelectedIndex"})
+@Html.Hidden("PrevLastSelectedIndex", Model.PrevLastSelectedIndex, new {id = "PrevLastSelectedIndex"})
+<script>
+    const techViewModels = @Html.Raw(Json.Serialize(Model.Techs));
+
+    // Get the values from the hidden fields using vanilla JS
+    
+</script>
+@* @{
     //****SHOULD HAVE DONE THIS FROM THE GET-GO: MAP ID TO QUEUEID!!/
-    var idToQueueIdMap = Model.Techs.ToDictionary(t => t.Id, t => t.QueueId);
-    var queueIdToIdMap = Model.Techs.ToDictionary(t => t.QueueId, t => t.Id);
+    // var idToQueueIdMap = Model.Techs.ToDictionary(t => t.Id, u => u.QueueId);
+    // var queueIdToIdMap = Model.Techs.ToDictionary(t => t.QueueId, u => u.Id);
     int i = 0; //for index check
-    var activeTechs = Model.Techs.Where(t => t.IsAvailable).ToList(); //*******v2/
+    var activeTechs = Model.Techs.Where(t => t.IsAvailable).OrderBy(t => t.QueueId).ToList(); //*******v2/
     var activeCount = activeTechs.Count; //*******v2/
     var lastAssignedQueueId = idToQueueIdMap[Model.LastSelectedIndex + 1]; //*******v2/
     var firstActiveQueueId = activeTechs.Any() ? activeTechs.First().QueueId : -1; //*******v2/
@@ -23,28 +33,25 @@
             }
         }
     }
-}
-<div class="container-fluid" data-last-selected-index="@Model.LastSelectedIndex" data-minimum-active="@Model.HasReachedMinimumActiveTechs">
+} *@
+<div class="container-fluid" data-last-selected-index="@Model.LastSelectedIndex" data-prev-last-selected-index="@Model.PrevLastSelectedIndex">
 @*     @for (int i = 0; i < Model.Techs.Count; i++) *@
     @foreach (var tech in Model.Techs)
     {
-        var isLastAssigned = (tech.QueueId == idToQueueIdMap[Model.LastSelectedIndex + 1]);
-        var isActive = tech.IsAvailable;
-        var isCurrentSelectee = (tech.QueueId == currSelecteeQueueId);
-        var isOnlyOneActive = (tech.IsAvailable && activeCount == 1);
-        var isNextActive = isActive && !isLastAssigned; //<--not for scenarios where there is only 1 though?
+        @* var isLastAssigned = (tech.QueueId == idToQueueIdMap[Model.LastSelectedIndex + 1]); *@
+        var isLastAssigned = tech.QueueId == Model.LastSelectedIndex;
+        var isAvailable = tech.IsAvailable;
+        var isCurrentSelectee = tech.QueueId == Model.CurrentSelectee;
+        var isPrevLastAssigned = tech.QueueId == Model.PrevLastSelectedIndex;
+        @* var isOnlyOneActive = (tech.IsAvailable && activeCount == 1); *@
+        var isNextActive = isAvailable && !isLastAssigned; //<--not for scenarios where there is only 1 though?
 
         var auxBtnClasses = "btn col-1 my-2 border border-2 border-secondary d-flex align-items-center justify-content-center shadow hover-effect-1 bg-light";
         var techButtonClasses = "btn border col-6 text-center py-4 border-3 my-2";
 
         //var canOverride = (isActive && )
 
-        if (isOnlyOneActive && isActive)
-        {
-            techButtonClasses += " btn-success";
-        }
-
-        else if (isCurrentSelectee)
+        if (isCurrentSelectee)
         {
             techButtonClasses += " btn-success text-warning border-warning";
         }
@@ -54,18 +61,20 @@
             techButtonClasses += " btn-danger text-light border-secondary";
         }
 
-        var disabledAttrib = isLastAssigned || !isActive ? "disabled" : "";
+        @* var disabledAttrib = isLastAssigned || !isActive ? "disabled" : ""; *@
+        var disabledAttrib = (!isCurrentSelectee) ? "disabled" : "";
         var ariaDisabled = disabledAttrib == "disabled" ? "true" : "false";
-        var overrideVisibility = (isActive && !isCurrentSelectee) ? "visible" : "invisible";
+        var overrideVisibility = (isAvailable && !isCurrentSelectee) ? "visible" : "invisible";
         
         <div class="row align-items-stretch btn-row-group">
             <div class="@auxBtnClasses opacity-75 me-4 toggle-btn-@tech.QueueId" data-parent-index="@tech.QueueId" data-id="@tech.Id" data-queue-id="@tech.QueueId">
-                <img src="~/img/toggle1.webp" class="rounded img-fluid @(isActive ? "black-to-green" : "black-to-red")" alt="toggle" />
+                <img src="~/img/toggle1.webp" class="rounded img-fluid @(isAvailable ? "black-to-green" : "black-to-red")" alt="toggle" />
             </div>
-            <div class="@techButtonClasses tech-queue-btn-@tech.QueueId" data-index="@tech.QueueId" data-added-as-id="@tech.QueueId" aria-disabled="@ariaDisabled">
+            @* ^^need to have these update themselves in json file when the user deactivates *@
+            <div class="@techButtonClasses @disabledAttrib tech-queue-btn-@tech.QueueId" data-index="@tech.QueueId" data-added-as-id="@tech.QueueId" aria-disabled="@ariaDisabled" data-id="@tech.Id">
                 <h2>@tech.Name</h2>
             </div>
-            <div class="@auxBtnClasses opacity-50 ms-4 override-btn-@tech.QueueId @(isNextActive ? "visible" : "invisible")" data-parent-index="@tech.QueueId" data-id="@tech.Id" data-queue-id="@tech.QueueId">
+            <div class="@auxBtnClasses opacity-50 ms-4 override-btn-@tech.QueueId @overrideVisibility" data-parent-index="@tech.QueueId" data-id="@tech.Id" data-queue-id="@tech.QueueId">
                 <img src="~/img/down_left.webp" class="rounded img-fluid" alt="down-left-arrow" />
             </div>
         </div>
