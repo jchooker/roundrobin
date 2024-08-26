@@ -4,14 +4,44 @@
     const toggleButtons = $('div[class*="toggle-btn"]');
     const techButtons = $('div[class*="tech-queue-btn"]')
     const overrideButtons = $('div[class*="override-btn"]')
+    var techViewModels = JSON.parse($('#TechList').val());
 
     //migrated what follows from index.cshtml & translated to jquery
     var $last = $('#LastSelectedIndex');
     var $curr = $('#CurrentSelectee');
     var $prev = $('#PrevLastSelectedIndex');
+    console.log($last.val());
     var lastSel = parseInt($last.val());
+    console.log("pre-click lastSel in hidden elem: " + lastSel);
     var currSel = parseInt($curr.val());
+    console.log("pre-click currSel in hidden elem: " + currSel)
     var prevLastSel = parseInt($prev.val());
+    var queueIdStateTracking = {
+        currSelecteeIdx: {
+            "pre-click": currSel,
+            "post-click": null //<--needs to be determined from calc curr method
+        },
+        lastSelectedIdx: {
+            "pre-click": lastSel,
+            "post-click": currSel
+        },
+        prevLastSelectedIdx: {
+            "pre-click": prevLastSel,
+            "post-click": lastSel
+        }
+    }
+    console.log(queueIdStateTracking);
+    //^^These are all "pre-click", as are the "Sel" variables that use them...
+    //MAKE SURE that's what needs to be handed to the Controller method
+    //makes sense, if it is for setting prevLastSelected to pre-click
+    //lastSelected and lastSelected to pre-click currentSelectee
+    //consider making another dictionary that matches pre-click values with
+    //post-click values, e.g. "[{'currSelectee': {'pre-click': 1, 'post-click' : 3} }, {'lastSelectedId': {'pre-click': 5, 'post-click': 1}}, {'prevLastSelectedId': {'pre-click': 4, 'post-click': 5}}]"
+
+    //^^this is one of several locations where lastSelectedIdx can be taken
+    //directly from currSelecteeIdx, and prevLastSelectedIdx can be taken
+    //directly from lastSelectedIdx, since these values represent past selections,
+    //and IsAvailable (almost) solely determines the next selectee
 
     console.log("Values at js initiation: \n($last): " + $last + "\n$curr: " + $curr + "\n$prev: " + $prev + "\nlastSel: " + lastSel + "\ncurrSel: " + currSel + "\nprevLast: " + prevLastSel);
 
@@ -32,16 +62,27 @@
             event.preventDefault();
             var $t = $(this);
             if ($t.hasClass('disabled')) return;
-            const index = $t.data('index');
+
             const queueId = $t.data('added-as-id');
-            var techId = queueIdToIdMap[queueId];
+            var techId = $t.data('id');
 
             $prev.val($last.val());
-            $last.val(index);
+            $last.val($curr.val());
 
             try {
+                console.log(queueIdStateTracking);
                 const nextCurr = await updateLastSelectedIndex(techViewModels, techId);
+                //^^this correctly executing means last and prev have been updated in the json file
                 $curr.val(nextCurr);
+                queueIdStateTracking.currSelecteeIdx["post-click"] = nextCurr;
+
+                console.log(queueIdStateTracking.lastSelectedIdx["post-click"]);
+                console.log(queueIdStateTracking.prevLastSelectedIdx["post-click"]);
+                console.log(queueIdStateTracking.currSelecteeIdx["post-click"]);
+                updateDOM(techViewModels, queueIdStateTracking.lastSelectedIdx["post-click"],
+                    queueIdStateTracking.currSelecteeIdx["post-click"], queueIdStateTracking.prevLastSelectedIdx["post-click"]);
+
+                resetTrackingDictionary();//pulls from hidden values, need to make sure we're updating those
             } catch (err) {
                 alert("Error updating last selected index: " + err);
             }
@@ -98,34 +139,64 @@
 
         //*******END OF COMMENTED OUT BEGINNING SECTION 1*/
     });
+
+    function resetTrackingDictionary() { //latest issues here
+        console.log($last.val());
+        var lastSelNew = parseInt($last.val());
+        console.log("pre-click lastSelNew in hidden elem: " + lastSelNew);
+        var currSelNew = parseInt($curr.val());
+        console.log("pre-click currSelNew in hidden elem: " + currSelNew);
+        var prevLastSelNew = parseInt($prev.val());
+        console.log("pre-click prevLastSelNew in hidden elem: " + prevLastSelNew);
+        queueIdStateTracking.currSelecteeIdx["pre-click"] = currSelNew;
+        queueIdStateTracking.currSelecteeIdx["post-click"] = null;
+        queueIdStateTracking.lastSelectedIdx["pre-click"] = lastSelNew;
+        queueIdStateTracking.lastSelectedIdx["post-click"] = currSelNew;
+        queueIdStateTracking.prevLastSelectedIdx["pre-click"] = prevLastSelNew;
+        queueIdStateTracking.prevLastSelectedIdx["post-click"] = lastSelNew;
+    }
+
+    function updateElsewhere() {
+        var updatedData = {
+            CurrentSelectee: $('#CurrentSelectee').val(),
+            LastSelectedIndex: $('#LastSelectedIndex').val(),
+            PrevLastSelectedIndex: $('#PrevLastSelectedIndex').val(),
+            Techs: JSON.parse($('#techViewModels')).val()
+        };
+    }
+
     async function calculateNextSelectee(techs, lastSelectedId) {
-        try {
+        try { //eliminate this entirely, since the curr can be
+            //determined simply by what they were "able to" click,
+            //since only the "next available" gets made IsAvailable?
             const response = await $.ajax({
                 url: "/Techs/GetCurrentSelectee",
-                type: "GET",
+                type: "POST",
                 contentType: "application/json",
-                data: {
-                    lastSelectedId: lastSel,
-                    prevLastSelectedId: prevLastSel
-                }
-            })
-            .done(function (response) {
-                if (response.success) {
-                    const lastSelectedIdx = idToQueueIdMap[response.lastSelectedId]
-                    console.log(lastSelectedIdx);
-                    const prevLastSelectedIdx = idToQueueIdMap[response.prevLastSelectedId];
-                    console.log(prevLastSelectedIdx);
-                    const currSelecteeIdx = idToQueueIdMap[response.currSelectee];
-                    console.log(currSelecteeIdx);
-                    //$('#CurrentSelectee').val(response.currSelectee);
-                    //$('#LastSelectedId').val(response.lastSelectedId);
-                    //$('#PrevLastSelectedId').val(response.prevLastSelectedId);
-                    updateDOM(techs, lastSelectedIdx, currSelecteeIdx, prevLastSelectedIdx);
-                    return response.currSelectee;
-                } else {
-                    alert("Error updating DOM & calculating current selectee: " + response.error);
-                }
+                data: JSON.stringify({
+                    techViewModels: techs,
+                    currSelectee: null,
+                    lastSelectedId: queueIdToIdMap[queueIdStateTracking.lastSelectedIdx["post-click"]],
+                    prevLastSelectedId: queueIdToIdMap[queueIdStateTracking.prevLastSelectedIdx["post-click"]]
+                }),
+                dataType: "json"
             });
+
+            if (response.success) {
+                //const lastSelectedIdx = queueIdStateTracking.lastSelectedIdx["post-click"]
+                //console.log(lastSelectedIdx);
+                //const prevLastSelectedIdx = queueIdStateTracking.prevLastSelectedIdx["post-click"];
+                //console.log(prevLastSelectedIdx);
+                //const currSelecteeIdx = queueIdStateTracking.currSelecteeIdx["post-click"];
+                //console.log(currSelecteeIdx);
+                //$('#CurrentSelectee').val(response.currSelectee);
+                //$('#LastSelectedId').val(response.lastSelectedId);
+                //$('#PrevLastSelectedId').val(response.prevLastSelectedId);
+                //updateDOM(techs, lastSelectedIdx, currSelecteeIdx, prevLastSelectedIdx);
+                return response.currSelectee;
+            } else {
+                alert("Error updating DOM & calculating current selectee: " + response.error);
+            }
         } catch (err) {
             alert("Error calculating next selectee: " + err);
         }
@@ -163,102 +234,176 @@
         updateBtns(index);
     });
 
-    async function initLoad(index) {
-        const activeTechs = await getAvailableTechsCount();
+    function clearOutClassesWithSubstring(element, substrings) {
+        substrings.forEach(substring => {
+            const classes = element.attr("class").split(" ").filter(function (c) {
+                return c.includes(substring, 0) === 0;
+            });
+            if (classes.length > 0) element.removeClass(classes.join(" "));
+        });
+
     }
+
     function updateDOM(techs, lastSelectedIndex, currentSelectee, prevLastSelectedIndex) { //does not need
         //to be async because: "[t]he updateDOM function is purely about reflecting the current state of the 
         //application in the browser's UI"
         const techButtons = $('.btn-row-group div[class*="tech-queue-btn"]');
-        const $t = $(this);
         techButtons.each(function () {
             const techId = $(this).data('id');
             const tech = techs.find(t => t.Id === techId); //techs coming through as undef
             const availableTechs = techs.filter(t => t.IsAvailable).length;
+            var substrings1 = ["text-", "border-"]
 
             if (tech) { //**FOR 08/12/2024: SPLIT INTO =1, =2, AND >2
+                const $t = $(this);
                 const isCurrentSelectee = tech.QueueId === currentSelectee;
                 const isLastAssigned = tech.QueueId === lastSelectedIndex;
                 const isPrevLastAssigned = tech.QueueId === prevLastSelectedIndex;
                 //^^Work out if all of the steps on this are correct
 
-                if (availableTechs > 2) { //how to handle ones that went from lastassigned to regular white?
-                    if (isCurrentSelectee) {
-                        $t.addClass('btn-success-in-1').removeClass('disabled');
-                        setTimeout(() => {
-                            $t.removeClass('btn-success-in-1 border-secondary text-secondary')
-                                .addClass('btn-success text-warning border-warning')
-                                .prop("aria-disabled", "false");
-                        }, 500);
-                        //setTimeout(() => {
-                        //    $(this).removeClass('btn-success-in-1 border-secondary text-secondary')
-                        //        .addClass('btn-success text-warning border-warning')
-                        //        .prop("aria-disabled", "false");
-                        //}, 500);
-                    }
-                    else if (isLastAssigned) {
-                        $t.addClass('btn-success-out-1').addClass('disabled');
-                        setTimeout(() => {
-                            $t.removeClass('btn-success-out-1 btn-success text-warning border-warning')
-                                .addClass('btn-danger border-secondary text-light')
-                                .prop("aria-disabled", "true");
-                        }, 500);
-                    }
-                    else {
-                        $t.addClass('button-danger-out-1')
-                        setTimeout(() => {
-                            $t.removeClass('btn-danger-out-1 btn-danger text-light')
-                                .addClass('text-secondary')
-                            if (!$t.hasClass('disabled')) $t.addClass('disabled');
-                            var $ad = $t.attr('aria-disabled');
-                            if ($ad !== undefined && $ad === "false") $t.attr("aria-disabled", "true");
-                        }, 500);
-                    }
-                }
-
-                else if (availableTechs === 2) {
-                    if (isCurrentSelectee) {
-                        $t.addClass('btn-danger-to-success').removeClass('disabled');
-                        setTimeout(() => {
-                            $t.removeClass('btn-danger-to-success btn-danger text-light border-secondary')
-                                .addClass('btn-success text-warning border-warning')
-                                .prop("aria-disabled", "false");
-                        }, 500);
-                    }
-                    else if (isLastAssigned) {
-                        $t.addClass('btn-success-out-1').addClass('disabled');
-                        setTimeout(() => {
-                            $t.removeClass('btn-success-out-1 btn-success text-warning border-warning')
-                                .addClass('btn-danger border-secondary text-light')
-                                .prop("aria-disabled", "true");
-                        }, 500);
-                    }
-                    else {
-                        $t.addClass('button-danger-out-1')
-                        setTimeout(() => {
-                            $t.removeClass('btn-danger-out-1 btn-danger text-light')
-                                .addClass('text-secondary')
-                            if (!$t.hasClass('disabled')) $t.addClass('disabled');
-                            var $ad = $t.attr('aria-disabled');
-                            if ($ad !== undefined && $ad === "false") $t.attr("aria-disabled", "true");
-                        }, 500);
-                    }
-                }
-
-                else if (availableTechs === 1) {
-                    if (isCurrentSelectee) {
+                if (tech.QueueId === currentSelectee) { //important that this one is first for only 1-2 techs being active
+                    if ($t.hasClass('btn-success')) {
                         $t.addClass('btn-success-out-false');
-                        //do any of the isLastAssigned or prevLastAssigned settings need to be addressed
-                        //here? should we just leave them as they were?
-                        setTimeout(() => {
+                        setTimeout(() => { //clearOut function not utilized bc borders and text colors remain the same
                             $t.removeClass('btn-success-out-false');
                         }, 500);
                     }
+                    else if ($t.hasClass('btn-danger'))
+                    {
+                        $t.addClass('btn-danger-to-success').removeClass('disabled');
+                        setTimeout(() => {
+                            clearOutClassesWithSubstring($t, substrings1); //removes existing borders and text color bootstrap
+                            $t.removeClass('btn-danger-to-success btn-danger') //...classes
+                                .addClass('btn-success text-warning border-warning')
+                                .prop("aria-disabled", "false");
+                        }, 500);
+                    }
+                    else if ($t.hasClass('btn-basic-light'))
+                    {
+                        $t.addClass('btn-success-in-1').removeClass('disabled');
+                        setTimeout(() => {
+                            clearOutClassesWithSubstring($t, substrings1);
+                            $t.removeClass('btn-success-in-1 btn-basic-light')
+                                .addClass('btn-success text-warning border-warning')
+                                .prop("aria-disabled", "false");
+
+                            }, 500);
+                        }//<------'btn-basic-light'!!! for white btns
+                            //setTimeout(() => {
+                            //    $(this).removeClass('btn-success-in-1 border-secondary text-secondary')
+                            //        .addClass('btn-success text-warning border-warning')
+                            //        .prop("aria-disabled", "false");
+                    //}, 500);
+                } else if (tech.QueueId === lastSelectedIndex) {
+                    if ($t.hasClass('btn-success')) {
+                        $t.addClass('btn-success-out-1');
+                        if (!($t.hasClass('disabled'))) $t.addClass('disabled');
+                        setTimeout(() => {
+                            clearOutClassesWithSubstring($t, substrings1);
+                            $t.removeClass('btn-success-out-1 btn-success border-warning')
+                                .addClass('btn-danger text-light border-secondary')
+                                .prop("aria-disabled", "false");
+                        }, 500);
+                    }
+                    //$t.addClass('btn-danger').removeClass('btn-success');
+                } else {
+                    if ($t.hasClass('btn-danger')) {
+                        $t.addClass('btn-danger-out-1');
+                        if (!($t.hasClass('disabled'))) $t.addClass('disabled');
+                        setTimeout(() => {
+                            clearOutClassesWithSubstring($t, substrings1);
+                            $t.removeClass('btn-danger-out-1 btn-danger text-light')
+                                .addClass('text-secondary border-secondary btn-basic-light')
+                                .prop("aria-disabled", "false");
+                        }, 500);
+
+                    }
                 }
 
+                //**********BEGIN NEED TO REACTIVATE*/
+                //if (availableTechs > 2) { //how to handle ones that went from lastassigned to regular white?
+                //    if (isCurrentSelectee) {
+                //        $t.addClass('btn-success-in-1').removeClass('disabled');
+                //        setTimeout(() => {
+                //            $t.removeClass('btn-success-in-1 border-secondary text-secondary')
+                //                .addClass('btn-success text-warning border-warning')
+                //                .prop("aria-disabled", "false");
+                //        }, 500);
+                //        //setTimeout(() => {
+                //        //    $(this).removeClass('btn-success-in-1 border-secondary text-secondary')
+                //        //        .addClass('btn-success text-warning border-warning')
+                //        //        .prop("aria-disabled", "false");
+                //        //}, 500);
+                //    }
+                //    else if (isLastAssigned) {
+                //        $t.addClass('btn-success-out-1').addClass('disabled');
+                //        setTimeout(() => {
+                //            $t.removeClass('btn-success-out-1 btn-success text-warning border-warning')
+                //                .addClass('btn-danger border-secondary text-light')
+                //                .prop("aria-disabled", "true");
+                //        }, 500);
+                //    }
+                //    else {
+                //        $t.addClass('button-danger-out-1')
+                //        setTimeout(() => {
+                //            $t.removeClass('btn-danger-out-1 btn-danger text-light')
+                //                .addClass('text-secondary')
+                //            if (!$t.hasClass('disabled')) $t.addClass('disabled');
+                //            var $ad = $t.attr('aria-disabled');
+                //            if ($ad !== undefined && $ad === "false") $t.attr("aria-disabled", "true");
+                //        }, 500);
+                //    }
+                //}
+
+                //else if (availableTechs === 2) {
+                //    if (isCurrentSelectee) {
+                //        $t.addClass('btn-danger-to-success').removeClass('disabled');
+                //        setTimeout(() => {
+                //            $t.removeClass('btn-danger-to-success btn-danger text-light border-secondary')
+                //                .addClass('btn-success text-warning border-warning')
+                //                .prop("aria-disabled", "false");
+                //        }, 500);
+                //    }
+                //    else if (isLastAssigned) {
+                //        $t.addClass('btn-success-out-1').addClass('disabled');
+                //        setTimeout(() => {
+                //            $t.removeClass('btn-success-out-1 btn-success text-warning border-warning')
+                //                .addClass('btn-danger border-secondary text-light')
+                //                .prop("aria-disabled", "true");
+                //        }, 500);
+                //    }
+                //    else {
+                //        $t.addClass('button-danger-out-1')
+                //        setTimeout(() => {
+                //            $t.removeClass('btn-danger-out-1 btn-danger text-light')
+                //                .addClass('text-secondary')
+                //            if (!$t.hasClass('disabled')) $t.addClass('disabled');
+                //            var $ad = $t.attr('aria-disabled');
+                //            if ($ad !== undefined && $ad === "false") $t.attr("aria-disabled", "true");
+                //        }, 500);
+                //    }
+                //}
+
+                //else if (availableTechs === 1) {
+                //    if (isCurrentSelectee) {
+                //        $t.addClass('btn-success-out-false');
+                //        //do any of the isLastAssigned or prevLastAssigned settings need to be addressed
+                //        //here? should we just leave them as they were?
+                //        setTimeout(() => {
+                //            $t.removeClass('btn-success-out-false');
+                //        }, 500);
+                //    }
+                //}
+                //********END NEED TO REACTIVATE*/
+
                 const overrideBtn = $t.siblings('div[class*="override-btn"]');
-                if (tech.IsAvailable && isCurrentSelectee) {
-                    overrideBtn.removeClass('invisible').addClass('visible');
+                if (tech.IsAvailable) {
+                    if (tech.isCurrentSelectee && overrideBtn.hasClass('visible')) {
+                        overrideBtn.removeClass('visible').addClass('invisible');
+                    }
+                    else if(overrideBtn.hasClass('invisible')) {
+                         overrideBtn.removeClass('invisible').addClass('visible');
+                    }
                 }
                 else {
                     overrideBtn.removeClass('visible').addClass('invisible');
@@ -300,18 +445,11 @@
         //set curr active btn as last assigned when??
     }
 
-    function btnDefaults() {
-        const $allCols = $(".col-6");
-        $allCols.removeClass("btn-success btn-danger btn-success-in-1 btn-success-out-1 btn-danger-out-1 text-light")
-            .addClass("disabled")
-            .prop("aria-disabled", "true");        //custom class resets
-    }
-
-    async function updateLastSelectedIndex(techs, lastSelectedId) {
+    async function updateLastSelectedIndex(techs, postClickLastSelectedId) {
         try {
-            await $.post("/Techs/UpdateLastSelectedIndex", { techId: lastSelectedId });
+            await $.post("/Techs/UpdateLastSelectedIndex", { techId: postClickLastSelectedId });
             //^^^lastselectedid needs to be the one that just got clicked!
-            const nextCurr = await calculateNextSelectee(techs, lastSelectedId);
+            const nextCurr = await calculateNextSelectee(techs, postClickLastSelectedId);
             return nextCurr;
         } catch (err) {
             alert("Error updating last selected index: " + err);

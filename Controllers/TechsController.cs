@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Identity;
 using TechListApp.Services;
 using System.Diagnostics;
 using static System.Runtime.InteropServices.JavaScript.JSType;
+using Newtonsoft.Json;
 
 namespace TechListApp.Controllers
 {
@@ -37,6 +38,7 @@ namespace TechListApp.Controllers
                 //{
                 //    throw new InvalidOperationException("Techs list should not be null.");
                 //}
+                Console.WriteLine(data);
                 if (data.Techs == null || !data.Techs.Any())
                 {
                     throw new InvalidOperationException("Techs data is null or empty.");
@@ -48,6 +50,13 @@ namespace TechListApp.Controllers
                     Name = t.Name ?? string.Empty,
                     IsAvailable = t.IsAvailable
                 }).OrderBy(t => t.Id).ToList();
+                int availableCount = techs.Count(t => t.IsAvailable);
+
+                for (int i = 0; i < techs.Count; i++)
+                {
+                    techs[i].QueueId = i; //mostly going to be using queueid to refer to specific buttons
+                    techs[i].IsOnlyOneAvailable = (techs[i].IsAvailable && availableCount == 1);
+                }
 
                 foreach (var tech in techs)
                 {
@@ -62,6 +71,7 @@ namespace TechListApp.Controllers
                     }
 
                     // Check for duplicate QueueIds
+                    Console.WriteLine(tech.QueueId);
                     if (!queueIdToIdMap.ContainsKey(tech.QueueId))
                     {
                         queueIdToIdMap.Add(tech.QueueId, tech.Id);
@@ -71,27 +81,36 @@ namespace TechListApp.Controllers
                         Console.WriteLine($"Duplicate QueueId found: {tech.QueueId} with Id: {tech.Id}");
                     }
                 }
-
-                int availableCount = techs.Count(t => t.IsAvailable);
-
-                for (int i = 0; i < techs.Count; i++)
-                {
-                    techs[i].QueueId = i; //mostly going to be using queueid to refer to specific buttons
-                    techs[i].IsOnlyOneAvailable = (techs[i].IsAvailable && availableCount == 1);
-                }
+                Console.WriteLine(idToQueueIdMap);
+                Console.WriteLine(queueIdToIdMap);
 
                 //int lastSelectedIndex = idToQueueIdMap.ContainsKey(data.LastSelectedId) ? idToQueueIdMap[data.LastSelectedId] : 1; //queueid
                 //int prevLastSelectedIndex = idToQueueIdMap.ContainsKey(data.PrevLastSelectedId) ? idToQueueIdMap[data.PrevLastSelectedId] : 0; //queueid
                 //$$$$$$$$$$$$$$$$$$$$$$^^reactivate these soon?
+                int currSelecteeIndex;
+                if (!idToQueueIdMap.TryGetValue(data.CurrentSelectee, out currSelecteeIndex))
+                {
+                    currSelecteeIndex = 2;
+                }
                 int lastSelectedIndex;
                 if (!idToQueueIdMap.TryGetValue(data.LastSelectedId, out lastSelectedIndex))
                 {
-                    lastSelectedIndex = 1;
+                    lastSelectedIndex = 0;
+                }
+                else
+                {
+                    Console.WriteLine("correct last val procedure step 1 done.");
+                    lastSelectedIndex = idToQueueIdMap[data.LastSelectedId];
                 }
                 int prevLastSelectedIndex;
                 if (!idToQueueIdMap.TryGetValue(data.PrevLastSelectedId, out prevLastSelectedIndex))
                 {
-                    prevLastSelectedIndex = 0;
+                    prevLastSelectedIndex = 3;
+                }
+                else
+                {
+                    Console.WriteLine("correct PREV last val procedure step 1 done.");
+                    prevLastSelectedIndex = idToQueueIdMap[data.PrevLastSelectedId];
                 }
                 //int lastSelectedIndex = techs.FindIndex(t => t.Id == data.LastSelectedId);
                 //if (lastSelectedIndex == -1)
@@ -110,28 +129,28 @@ namespace TechListApp.Controllers
 
                 //bool isOnlyOneAvailable = techs.Count(t);
 
-                JsonResult result = CalculateCurrentSelectee(techs, data.LastSelectedId, data.PrevLastSelectedId);
+                //JsonResult result = CalculateCurrentSelectee(techs, data.LastSelectedId, data.PrevLastSelectedId);
 
-                int currSelecteeQueueId = -1;
+                //int currSelecteeQueueId = -1;
 
-                //extract queueId from result
-                dynamic jsonResponse = result.Value;
+                ////extract queueId from result
+                //dynamic jsonResponse = result.Value;
 
-                if (jsonResponse.success)
-                {
-                    currSelecteeQueueId = jsonResponse.queueId;
-                }
-                else
-                {
-                    return result;
-                }
+                //if (jsonResponse.success)
+                //{
+                //    currSelecteeQueueId = jsonResponse.queueId;
+                //}
+                //else
+                //{
+                //    return result;
+                //}
 
                 //map to view model
                 var viewModel = new QueueViewModel
                 {
                     Techs = techs,
                     LastSelectedIndex = lastSelectedIndex, //obtain from persistent source
-                    CurrentSelectee = currSelecteeQueueId,
+                    CurrentSelectee = currSelecteeIndex,
                     PrevLastSelectedIndex = prevLastSelectedIndex,
                     //Techs = data.Techs.Select(t => new TechViewModel
                     //{
@@ -143,12 +162,37 @@ namespace TechListApp.Controllers
                     //LastSelectedIndex = data.Techs.FindIndex(t => t.Id == data.LastSelectedId), //obtain from persistent source
                     //HasReachedMinimumActiveTechs = hasReachedMinimumActiveTechs
                 };
+                //...List<TechViewModel> directly accessible
                 return View(viewModel);
             }
             catch (Exception ex)
             {
                 return View("Error", new ErrorViewModel { Message = ex.Message });
             }
+        }
+
+        [HttpPost]
+        public IActionResult UpdateQueueViewModel([FromBody] QueueViewModel updatedViewModel)
+        {
+            if (ModelState.IsValid)
+            {
+                var data = new TechData
+                {
+                    LastSelectedId = queueIdToIdMap[updatedViewModel.LastSelectedIndex],
+                    PrevLastSelectedId = queueIdToIdMap[updatedViewModel.PrevLastSelectedIndex],
+                    Techs = updatedViewModel.Techs.Select(t => new Tech
+                    {
+                        Id = t.Id,
+                        Name = t.Name,
+                        IsAvailable = t.IsAvailable
+                    }).ToList()
+                };
+
+                _techService.WriteToJson(data);
+
+                return Json(new { success = true });
+            }
+            return Json(new { success = false, error = "Invalid data" });
         }
 
         [HttpGet]
@@ -198,68 +242,93 @@ namespace TechListApp.Controllers
             }
         }
 
-        [HttpGet]
-        public IActionResult GetCurrentSelectee(int lastSelectedId, int prevLastSelectedId)
+        [HttpPost]
+        public IActionResult GetCurrentSelectee([FromBody] TechViewModelData techs)
         {
-            var data = _techService.ReadFromJson();
+            if (techs?.TechViewModels == null || !techs.TechViewModels.Any())
+            {
+                return Json(new { success = false, message = "No techs available." });
+            }
+            //var data = _techService.ReadFromJson();
+            var techViewModels = techs.TechViewModels;
+            var lastSelectedId = techs.LastSelectedId;
+            var currSelecteeId = techs.CurrentSelectee;
+            var prevLastSelectedId = techs.PrevLastSelectedId;
 
-            if (data.Techs == null || !data.Techs.Any())
+            var availableTechs = techViewModels.Where(t => t.IsAvailable)
+                .OrderBy(t => t.QueueId)
+                .ToList();
+
+            if (!availableTechs.Any())
             {
                 return Json(new { success = false, message = "No techs available." });
             }
 
-            var techs = data.Techs
-                .Select(t => new TechViewModel
-                {
-                    Id = t.Id,
-                    Name = t.Name ?? string.Empty,
-                    IsAvailable = t.IsAvailable,
-                })
-                .OrderBy(t => t.Id)
-                .ToList();
+            //var techs = data.Techs
+            //    .Select(t => new TechViewModel
+            //    {
+            //        Id = t.Id,
+            //        Name = t.Name ?? string.Empty,
+            //        IsAvailable = t.IsAvailable,
+            //    })
+            //    .OrderBy(t => t.Id)
+            //    .ToList();
 
-            int availableCount = techs.Count(t => t.IsAvailable);
+            //08/21:receives techs correctly up to this pt
 
-            for (int i = 0; i < techs.Count; i++)
-            {
-                techs[i].QueueId = i;
-                techs[i].IsOnlyOneAvailable = (techs[i].IsAvailable && availableCount == 1);
-            }
+            JsonResult result = CalculateCurrentSelectee(techViewModels, lastSelectedId, prevLastSelectedId);
 
-            JsonResult result = CalculateCurrentSelectee(techs, lastSelectedId, prevLastSelectedId);
+            Console.WriteLine(result);
 
-            int currSelecteeQueueId = -1;
 
             //extract queueId from result
             dynamic jsonResponse = result.Value;
+            int currSelecteeQueueId = -1;
 
             if (jsonResponse.success)
             {
                 currSelecteeQueueId = jsonResponse.queueId;
+
+                var currentTech = techViewModels.FirstOrDefault(t => t.QueueId == currSelecteeQueueId);
+                //^^just identifying the current tech from the original bunch, "available" status
+                //not necess needed
+
+                if (currentTech != null)
+                {
+                    var data = _techService.ReadFromJson();
+
+                    //update json file (lastselectedid & prevlastselectedid already have this done)
+                    data.CurrentSelectee = currentTech.Id;
+                    _techService.WriteToJson(data);
+                } else
+                {
+                    return Json(new { success = false, message = "Failed to find current selection." });
+                }
+
+                //var lastSelectedId = data.LastSelectedId;
+
+                //int prevLastSelectedId = data.PrevLastSelectedId;
+
+                // Update the last selected ID and write changes back to JSON
+                //data.PrevLastSelectedId = lastSelectedId;
+                //data.LastSelectedId = techs.First(t => t.QueueId == currSelecteeQueueId).Id; //error if negative!
+                //_techService.WriteToJson(data);
+
+
+                return Json(new 
+                { 
+                    success = true, 
+                    techs = techViewModels, 
+                    //lastSelectedId = data.LastSelectedId, 
+                    currSelectee = currSelecteeQueueId, 
+                    //prevLastSelectedId = data.PrevLastSelectedId 
+                });
             }
             else
             {
                 return result;
             }
 
-            //var lastSelectedId = data.LastSelectedId;
-
-            //int prevLastSelectedId = data.PrevLastSelectedId;
-
-            // Update the last selected ID and write changes back to JSON
-            data.PrevLastSelectedId = lastSelectedId;
-            data.LastSelectedId = techs.First(t => t.QueueId == currSelecteeQueueId).Id; //error if negative!
-            _techService.WriteToJson(data);
-
-
-            return Json(new 
-            { 
-                success = true, 
-                techs = techs, 
-                lastSelectedId = data.LastSelectedId, 
-                currSelectee = currSelecteeQueueId, 
-                prevLastSelectedId = data.PrevLastSelectedId 
-            });
         }
 
         private JsonResult CalculateCurrentSelectee(List<TechViewModel> techs, int lastSelectedId, int prevLastSelectedId)
@@ -296,6 +365,7 @@ namespace TechListApp.Controllers
             //{
                 int lastIndexInAvailableTechs = availableTechs.FindIndex(t => t.Id == lastSelectedId);
                 int nextIndex = availableTechs[(lastIndexInAvailableTechs + 1) % availableCount].QueueId;
+            //^^assembles the list of available
             //^^just let js sort out situation of ==1, ==2, >2?
             //}
             return new JsonResult(new
@@ -513,7 +583,7 @@ namespace TechListApp.Controllers
             }
             string jsonData = System.IO.File.ReadAllText(_jsonFilePath);
 
-            var techsFromJson = JsonSerializer.Deserialize<List<Tech>>(jsonData) ?? new List<Tech>();
+            var techsFromJson = System.Text.Json.JsonSerializer.Deserialize<List<Tech>>(jsonData) ?? new List<Tech>();
             return techsFromJson;
         }
     }

@@ -1,10 +1,16 @@
-﻿@model TechListApp.ViewModels.QueueViewModel
+﻿@using Newtonsoft.Json
+@model TechListApp.ViewModels.QueueViewModel
 
 @Html.Hidden("CurrentSelectee", Model.CurrentSelectee, new {id = "CurrentSelectee"})
 @Html.Hidden("LastSelectedIndex", Model.LastSelectedIndex, new {id = "LastSelectedIndex"})
 @Html.Hidden("PrevLastSelectedIndex", Model.PrevLastSelectedIndex, new {id = "PrevLastSelectedIndex"})
+@Html.Hidden("TechList", JsonConvert.SerializeObject(Model.Techs), new {id = "TechList"})
+@Html.Hidden("AvailableTechList", JsonConvert.SerializeObject(Model.Techs.Where(t => t.IsAvailable).ToList()), new {id = "AvailableTechList"})
 <script>
-    const techViewModels = @Html.Raw(Json.Serialize(Model.Techs));
+    const techViewModels = JSON.parse('@Html.Raw(Json.Serialize(Model.Techs))');
+
+    var availableTechListJson = document.getElementById('AvailableTechList').value;
+    var availableTechs = JSON.parse(availableTechListJson);
 
     // Get the values from the hidden fields using vanilla JS
     
@@ -34,6 +40,7 @@
         }
     }
 } *@
+<input type="hidden" id="techViewModels" value="@Html.Raw(Json.Serialize(Model.Techs))" />
 <div class="container-fluid" data-last-selected-index="@Model.LastSelectedIndex" data-prev-last-selected-index="@Model.PrevLastSelectedIndex">
 @*     @for (int i = 0; i < Model.Techs.Count; i++) *@
     @foreach (var tech in Model.Techs)
@@ -43,6 +50,7 @@
         var isAvailable = tech.IsAvailable;
         var isCurrentSelectee = tech.QueueId == Model.CurrentSelectee;
         var isPrevLastAssigned = tech.QueueId == Model.PrevLastSelectedIndex;
+        var isBasicBtn = (!isCurrentSelectee && !isLastAssigned) ? "btn-basic-light" : "";
         @* var isOnlyOneActive = (tech.IsAvailable && activeCount == 1); *@
         var isNextActive = isAvailable && !isLastAssigned; //<--not for scenarios where there is only 1 though?
 
@@ -71,7 +79,7 @@
                 <img src="~/img/toggle1.webp" class="rounded img-fluid @(isAvailable ? "black-to-green" : "black-to-red")" alt="toggle" />
             </div>
             @* ^^need to have these update themselves in json file when the user deactivates *@
-            <div class="@techButtonClasses @disabledAttrib tech-queue-btn-@tech.QueueId" data-index="@tech.QueueId" data-added-as-id="@tech.QueueId" aria-disabled="@ariaDisabled" data-id="@tech.Id">
+            <div class="@techButtonClasses @disabledAttrib @isBasicBtn tech-queue-btn-@tech.QueueId" data-index="@tech.QueueId" data-added-as-id="@tech.QueueId" aria-disabled="@ariaDisabled" data-id="@tech.Id">
                 <h2>@tech.Name</h2>
             </div>
             <div class="@auxBtnClasses opacity-50 ms-4 override-btn-@tech.QueueId @overrideVisibility" data-parent-index="@tech.QueueId" data-id="@tech.Id" data-queue-id="@tech.QueueId">

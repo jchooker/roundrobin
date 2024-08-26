@@ -1,15 +1,26 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 using TechListApp.Models;
+using TechListApp.ViewModels;
 
 namespace TechListApp.Services
 {
     public class TechData
     {
+        public int CurrentSelectee {  get; set; }
         public int LastSelectedId { get; set; }
         public int PrevLastSelectedId { get; set; }
         [JsonPropertyName("techs")]
         public List<Tech> Techs { get; set; } = new List<Tech>();
+    }
+
+    public class TechViewModelData
+    {
+        public int CurrentSelectee { get; set; }
+        public int LastSelectedId { get; set; }
+        public int PrevLastSelectedId { get; set; }
+        [JsonPropertyName("techViewModels")]
+        public List<TechViewModel> TechViewModels { get; set; } = new List<TechViewModel>();
     }
 
     public class TechService
