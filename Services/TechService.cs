@@ -19,6 +19,8 @@ namespace TechListApp.Services
         public int CurrentSelectee { get; set; }
         public int LastSelectedId { get; set; }
         public int PrevLastSelectedId { get; set; }
+        public bool? IsToggleRequest { get; set; }
+        public int ToggleTechId { get; set; }
         [JsonPropertyName("techViewModels")]
         public List<TechViewModel> TechViewModels { get; set; } = new List<TechViewModel>();
     }
@@ -67,6 +69,8 @@ namespace TechListApp.Services
             try
             {
                 //lock (fileLock)
+                // Log data before writing
+                Console.WriteLine("Writing data: " + JsonSerializer.Serialize(data));
                 //{
                 //    var jsonData = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
                 //    File.WriteAllText(JsonFilePath, jsonData);
@@ -76,6 +80,7 @@ namespace TechListApp.Services
                     string jsonData = JsonSerializer.Serialize(data);
                     writer.Write(jsonData);
                 }
+                Console.WriteLine("Data written to JSON file.");
                 //}
             } catch (Exception ex)
             {

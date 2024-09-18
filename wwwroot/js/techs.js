@@ -66,7 +66,7 @@
             const queueId = $t.data('added-as-id');
             var techId = $t.data('id');
 
-            $prev.val($last.val());
+            $prev.val($last.val()); //hidden html element values updated here
             $last.val($curr.val());
 
             try {
@@ -76,9 +76,6 @@
                 $curr.val(nextCurr);
                 queueIdStateTracking.currSelecteeIdx["post-click"] = nextCurr;
 
-                console.log(queueIdStateTracking.lastSelectedIdx["post-click"]);
-                console.log(queueIdStateTracking.prevLastSelectedIdx["post-click"]);
-                console.log(queueIdStateTracking.currSelecteeIdx["post-click"]);
                 updateDOM(techViewModels, queueIdStateTracking.lastSelectedIdx["post-click"],
                     queueIdStateTracking.currSelecteeIdx["post-click"], queueIdStateTracking.prevLastSelectedIdx["post-click"]);
 
@@ -87,57 +84,6 @@
                 alert("Error updating last selected index: " + err);
             }
         });
-        //*******BEGINNING OF COMMENTED OUT BEGINNING SECTION 1*/
-        //        var imgChild = $t.find('img');
-        //        const $c = $('.container-fluid');
-        //        const $curr = $('#CurrentSelectee');
-        //        const $last = $('#LastSelectedIndex');
-        //        const $prev = $('#PrevLastSelectedIndex');
-        //        const currSelectedIndex = $curr.val();
-        //        //const lastSelectedIndex = $('.container-fluid').data('last-selected-index');
-        //        const lastSelectedIndex = $last.val();
-        //        const prevLastSelectedIndex = $prev.val();
-        //        console.log(lastSelectedIndex);
-        //        //const index = $t.data("index");
-        //        const queueId = $t.data('added-as-id');
-        //        const lastSelectedToPrevLastSelectedId = prevLastSelectedIndex;
-        //        $prev.val(lastSelectedIndex);
-        //        $last.val(index);
-        //        //$curr.val(index); //<--needs to get result of calc
-        //        //$c.data('prev-last-selected-index', lastSelectedToPrevLastSelectedId);
-        //        //$c.data('last-selected-index', queueId);
-        //        /*lastSelectedIndex = index % total;*/
-        //        console.log(queueIdToIdMap + "\n");
-        //        console.log(idToQueueIdMap + "\n");
-        //        const lastSelectedId = queueIdToIdMap[queueId];
-        //        const prevLastSelectedId = queueIdToIdMap[lastSelectedToPrevLastSelectedId];    //a lot of this should be
-        //        //^person in btn just clicked becomes lastsel                       //pre-click lastselected vals since
-        //        //the c# function is formulating the
-        //        //get latest tvmodels from dom or stored state:                     //new currselectee
-        //        console.log("Original techviewmodels: ", techViewModels);
-        //        var techs = techViewModels.map(tech => {
-        //            console.log("Mapping tech: ", tech);
-        //            return {
-        //                Id: tech.Id,
-        //                Name: tech.Name,
-        //                IsAvailable: tech.IsAvailable,
-        //                QueueId: tech.QueueId
-        //            };
-        //        });
-        //        console.log(techs);
-        //        const calculateSelecteeRequest = {
-        //            techs: techs,
-        //            lastSelectedId: lastSelectedId,
-        //            prevLastSelectedId: prevLastSelectedId
-        //        }
-        //        try {
-        //            const nextCurr = await updateLastSelectedIndex(techs, techId);
-        //            $curr.val(nextCurr);
-        //        } catch (err) {
-        //            alert("Error updating last selected index: " + err);
-        //}
-
-        //*******END OF COMMENTED OUT BEGINNING SECTION 1*/
     });
 
     function resetTrackingDictionary() { //latest issues here
@@ -156,29 +102,35 @@
         queueIdStateTracking.prevLastSelectedIdx["post-click"] = lastSelNew;
     }
 
-    function updateElsewhere() {
-        var updatedData = {
-            CurrentSelectee: $('#CurrentSelectee').val(),
-            LastSelectedIndex: $('#LastSelectedIndex').val(),
-            PrevLastSelectedIndex: $('#PrevLastSelectedIndex').val(),
-            Techs: JSON.parse($('#techViewModels')).val()
-        };
+    async function updateOverride(techId) {
+        try {
+            const response = await $.ajax({
+                url: "/Techs/ToggleAvailability",
+                type: "POST",
+                contentType: "application/json",
+                data: { techId: techId }
+            })
+        } catch (ex) {
+            console.log("Error of " + ex);
+        }
     }
 
-    async function calculateNextSelectee(techs, lastSelectedId) {
+    async function calculateNextSelectee(techs, lastSelectedId, isToggleRequest = false) {
         try { //eliminate this entirely, since the curr can be
             //determined simply by what they were "able to" click,
             //since only the "next available" gets made IsAvailable?
+            const data = {
+                techViewModels: techs,
+                currSelectee: null,
+                lastSelectedId: queueIdToIdMap[queueIdStateTracking.lastSelectedIdx["post-click"]],
+                prevLastSelectedId: queueIdToIdMap[queueIdStateTracking.prevLastSelectedIdx["post-click"]]
+            };
+            if (isToggleRequest) data.isToggleRequest = true;
             const response = await $.ajax({
                 url: "/Techs/GetCurrentSelectee",
                 type: "POST",
                 contentType: "application/json",
-                data: JSON.stringify({
-                    techViewModels: techs,
-                    currSelectee: null,
-                    lastSelectedId: queueIdToIdMap[queueIdStateTracking.lastSelectedIdx["post-click"]],
-                    prevLastSelectedId: queueIdToIdMap[queueIdStateTracking.prevLastSelectedIdx["post-click"]]
-                }),
+                data: JSON.stringify(data),
                 dataType: "json"
             });
 
@@ -251,10 +203,10 @@
         techButtons.each(function () {
             const techId = $(this).data('id');
             const tech = techs.find(t => t.Id === techId); //techs coming through as undef
-            const availableTechs = techs.filter(t => t.IsAvailable).length;
+            //const availableTechs = techs.filter(t => t.IsAvailable).length;
             var substrings1 = ["text-", "border-"]
 
-            if (tech) { //**FOR 08/12/2024: SPLIT INTO =1, =2, AND >2
+            if (tech) { //**FOR 08/12/2024: SPLIT INTO =1, =2, AND >2 
                 const $t = $(this);
                 const isCurrentSelectee = tech.QueueId === currentSelectee;
                 const isLastAssigned = tech.QueueId === lastSelectedIndex;
@@ -266,20 +218,18 @@
                         $t.addClass('btn-success-out-false');
                         setTimeout(() => { //clearOut function not utilized bc borders and text colors remain the same
                             $t.removeClass('btn-success-out-false');
-                        }, 500);
+                        }, 400);
                     }
-                    else if ($t.hasClass('btn-danger'))
-                    {
+                    else if ($t.hasClass('btn-danger')) {
                         $t.addClass('btn-danger-to-success').removeClass('disabled');
                         setTimeout(() => {
                             clearOutClassesWithSubstring($t, substrings1); //removes existing borders and text color bootstrap
                             $t.removeClass('btn-danger-to-success btn-danger') //...classes
                                 .addClass('btn-success text-warning border-warning')
                                 .prop("aria-disabled", "false");
-                        }, 500);
+                        }, 400);
                     }
-                    else if ($t.hasClass('btn-basic-light'))
-                    {
+                    else if ($t.hasClass('btn-basic-light')) {
                         $t.addClass('btn-success-in-1').removeClass('disabled');
                         setTimeout(() => {
                             clearOutClassesWithSubstring($t, substrings1);
@@ -287,12 +237,12 @@
                                 .addClass('btn-success text-warning border-warning')
                                 .prop("aria-disabled", "false");
 
-                            }, 500);
-                        }//<------'btn-basic-light'!!! for white btns
-                            //setTimeout(() => {
-                            //    $(this).removeClass('btn-success-in-1 border-secondary text-secondary')
-                            //        .addClass('btn-success text-warning border-warning')
-                            //        .prop("aria-disabled", "false");
+                        }, 400);
+                    }//<------'btn-basic-light'!!! for white btns
+                    //setTimeout(() => {
+                    //    $(this).removeClass('btn-success-in-1 border-secondary text-secondary')
+                    //        .addClass('btn-success text-warning border-warning')
+                    //        .prop("aria-disabled", "false");
                     //}, 500);
                 } else if (tech.QueueId === lastSelectedIndex) {
                     if ($t.hasClass('btn-success')) {
@@ -300,10 +250,10 @@
                         if (!($t.hasClass('disabled'))) $t.addClass('disabled');
                         setTimeout(() => {
                             clearOutClassesWithSubstring($t, substrings1);
-                            $t.removeClass('btn-success-out-1 btn-success border-warning')
+                            $t.removeClass('btn-success-out-1 btn-success border-warning text-warning')
                                 .addClass('btn-danger text-light border-secondary')
                                 .prop("aria-disabled", "false");
-                        }, 500);
+                        }, 400);
                     }
                     //$t.addClass('btn-danger').removeClass('btn-success');
                 } else {
@@ -315,9 +265,30 @@
                             $t.removeClass('btn-danger-out-1 btn-danger text-light')
                                 .addClass('text-secondary border-secondary btn-basic-light')
                                 .prop("aria-disabled", "false");
-                        }, 500);
+                        }, 400);
 
                     }
+                }
+
+                const overrideBtn = $t.siblings('div[class*="override-btn"]');
+                //^^compare .data("parent-index") (i.e. queueid) of both
+                if (tech.IsAvailable || overrideBtn.data('queue-id') === queueIdStateTracking.currSelecteeIdx['post-click']) {
+                    /*if (tech.QueueId === currSel && overrideBtn.hasClass('visible')) {*/
+                    if (overrideBtn.hasClass('visible')) {
+                        overrideBtn.removeClass('visible').addClass('invisible');
+                    }
+                    else if (overrideBtn.hasClass('invisible')) {
+                        overrideBtn.removeClass('invisible').addClass('visible');
+                    }
+                }
+                else {
+                    overrideBtn.removeClass('visible').addClass('invisible');
+                }
+
+                if (tech.IsAvailable && tech.QueueId !== currentSelectee) {
+                    overrideBtn.removeClass('invisible').addClass('visible');
+                } else {
+                    overrideBtn.removeClass('visible').addClass('invisible');
                 }
 
                 //**********BEGIN NEED TO REACTIVATE*/
@@ -396,18 +367,7 @@
                 //}
                 //********END NEED TO REACTIVATE*/
 
-                const overrideBtn = $t.siblings('div[class*="override-btn"]');
-                if (tech.IsAvailable) {
-                    if (tech.isCurrentSelectee && overrideBtn.hasClass('visible')) {
-                        overrideBtn.removeClass('visible').addClass('invisible');
-                    }
-                    else if(overrideBtn.hasClass('invisible')) {
-                         overrideBtn.removeClass('invisible').addClass('visible');
-                    }
-                }
-                else {
-                    overrideBtn.removeClass('visible').addClass('invisible');
-                }
+
             }
 
         });
@@ -415,34 +375,6 @@
         //$('.container-fluid').data('prev-last-selected-index', prevLastSelectedIndex);
         //$('.container-fluid').data('last-selected-index', lastSelectedIndex);
 
-    }
-
-    function updateButtonFrontEndStates() { //**APPLY TO ALL # ACTIVE BTN SCENARIOS IF IT WORKS CONSISTENTLY*/
-        const activeBtn = techButtons.filter('.btn-success');
-        const lastAssignedBtn = techButtons.filter('.btn-danger');
-
-
-        const currActiveIndex = techButtons.index(activeBtn);
-        const nextActiveIndex = findNextActiveIndex(currActiveIndex);
-
-        //Update styles for the active button - **ADD TRANSITIONS
-        activeBtn.removeClass('btn-success text-warning border-warning')
-            .addClass('text-secondary border-secondary');
-
-        //update styles for last assigned button - **ADD TRANSITIONS
-        if (lastAssignedBtn.length) {
-            lastAssignedBtn.removeClass('btn-danger text-light border-secondary')
-                .addClass('text-secondary border-secondary disabled')
-                .attr('aria-disabled', 'true');
-        }
-
-        //set next active button - **TRANSITIONS!!
-        const nextActiveBtn = $(techButtons[nextActiveIndex]);
-        nextActiveBtn.removeClass('text-secondary border-secondary disabled')
-            .addClass('btn-success text-warning border-warning')
-            .attr('aria-disabled', 'false');
-
-        //set curr active btn as last assigned when??
     }
 
     async function updateLastSelectedIndex(techs, postClickLastSelectedId) {
@@ -456,41 +388,229 @@
         }
     }
 
+    async function overrideCurrSelecteeIndex(techs, postClickLastSelectedId) {
+        try {
+            const overrideResponse = await $.post("/Techs/OverrideCurrentSelectee", { techId: postClickLastSelectedId })
+                .done(async function (response) {
+                    //^^^lastselectedid needs to be the one that just got clicked!
+                    if (overrideResponse.success) {
+                        const nextCurr = await calculateNextSelectee(techs, postClickLastSelectedId);
+                        //if (nextCurr.success) {
+
+                        //    alert(nextCurr.message);
+                        //}
+                        return nextCurr;
+                    } else {
+                        alert("ERROR overriding current selected: " + overrideResponse.message);
+                        return { success: false, message: overrideResponse.message };
+                    }
+                    return nextCurr;
+                })
+                .fail(function () {
+                    alert("Error overriding current selectee.");
+                })
+        } catch (err) {
+            alert("Error updating last selected index: " + err);
+            return { success: false, message: err.message };
+        }
+    }
+
+    function updateTechListsAfterToggle(thisTechIndex) {
+        let currTechs = JSON.parse($('#TechList').val());
+        if (currTechs) {
+            let currTech = currTechs.find(t => t.QueueId === thisTechIndex);
+
+            currTech.IsAvailable = !currTech.IsAvailable;
+            let currTechAvailability = currTech.IsAvailable;
+            $('#TechList').val(JSON.stringify(currTechs));
+
+            let availableTechs = currTechs.filter(t => t.IsAvailable);
+            $('#AvailableTechList').val(JSON.stringify(availableTechs));
+
+            console.log('*&*&*&*& RESET CHECK FOR CURR =' + parseInt($curr.val()));
+
+            //keep using previously-set index values (from html hidden elements)
+            //bc only "current" changes with toggle click
+            if (!currTechAvailability && parseInt($curr.val()) == thisTechIndex) {
+                calculateNextSelectee(currTechs, $("#LastSelectedIndex").val(), true).then(nextSelectee => {
+                    $('#CurrentSelectee').val(nextSelectee);
+                    queueIdStateTracking.currSelecteeIdx["pre-click"] = nextSelectee;
+                    //queueIdStateTracking.currSelecteeIdx["post-click"] = null;
+                    updateDOM(currTechs, $('#LastSelectedIndex').val(), nextSelectee, $('#PrevLastSelectedIndex').val())
+                });
+            }
+            //alert("tech deactivated at queue id pos: " + currTech.QueueId);
+        }
+    }
+
+    async function checkDataBeforeWritingToJson(techs, toggleTechId, techQueueId) {
+        try {
+            const response = await $.ajax({
+                url: "/Techs/PrepareDataForApproval",
+                type: "POST",
+                dataType: "json",
+                contentType: "application/json",
+                data: JSON.stringify({
+                    techViewModels: techs,
+                    toggleTechId: toggleTechId,
+                    currSelectee: parseInt($curr.val()),
+                    lastSelectedId: queueIdToIdMap[queueIdStateTracking.lastSelectedIdx["post-click"]],
+                    prevLastSelectedId: queueIdToIdMap[queueIdStateTracking.prevLastSelectedIdx["post-click"]],
+                    isToggleRequest: true
+                })
+            });
+
+            if (response.success) {
+                const jsonData = response.jsonData;
+                //const userApproves = confirm("Please review the data:\n\n" + JSON.stringify(jsonData, null, 2) + "\n\nDo you approve?");
+                //if (userApproves) {
+                //    await writeApprovedData(response.jsonData);
+                //} else {
+                //    alert("Data write canceled by user.");
+                //}
+                $('#jsonDataDisplay').text("Please review the data:\n\n" + JSON.stringify(JSON.parse(jsonData), null, 2) + "\n\nDo you approve?");
+                $('#jsonModal').modal('show');
+                //approve btn click
+                $('#approveButton').off('click').on('click', async function () {
+                    $('#jsonModal').modal('hide');
+                    await writeApprovedData(jsonData, techQueueId);
+                });
+                $('#cancelBtn1').off('click').on('click', function () {
+                    alert("Data write canceled by user.");
+                });
+                $('#cancelBtn2').off('click').on('click', function () {
+                    alert("Data write canceled by user.");
+                });
+            }
+        } catch (err) {
+            alert("Error preparing data: " + err);
+        }
+    }
+
+    async function writeApprovedData(jsonData, techQueueId) {
+        try {
+            const finalMsg = "FINAL APPROVAL: Send this data to server?: \n" + JSON.stringify(JSON.parse(jsonData), null, 2);
+            const finalApproval = confirm(finalMsg);
+            if (finalApproval) {
+                const response = await $.ajax({
+                    url: "/Techs/WriteApprovedData",
+                    type: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify(JSON.parse(jsonData)),
+                    dataType: "json"
+                });
+
+                if (response.success) {
+                    alert(response.message);
+                    if (techQueueId == $curr)
+                } else {
+                    alert("Error: " + response.message);
+                }
+            } else {
+                alert("User rescinded approval!");
+            }
+        } catch (err) {
+            alert("Error writing approved data: " + err);
+        }
+    }
+
 
     //toggle availability button
-    $('.btn-row-group div[class*="toggle-btn"]').on("click", function (event) {
+    $('.btn-row-group div[class*="toggle-btn"]').on("click", async function (event) {
         event.preventDefault(); //<--remove if unnecessary
+
         //check for minimum # activated guys first
         var $t = $(this);
         var techId = $t.data("id");
 
         var imgChild = $t.find('img');
 
-        return new Promise((resolve, reject) => {
-            $.post("/Techs/ToggleAvailability", { techId: techId })
-                .done(function (response) {
-                    if (response.success) {
-                        /*$thisBtn.text(response.isAvailable ? "Deactivate" : "Activate");*/ //<--some version of this?
-                        //need checks in place before automatically changing button color
-                        if (imgChild.hasClass('black-to-green')) imgChild.removeClass('black-to-green').addClass('black-to-red');
-                        else imgChild.removeClass('black-to-red').addClass('black-to-green');
-                        resolve(getAvailableTechsCount()
-                            .then(count => count));
-                    } else {
-                        if (response.error.includes("the last tech.")) {
-                            alert(response.error);
-                            return;
-                        }
-                        reject("Error: " + response.error);
-                    }
-                })
-                .fail(function (jqXHR) {
-                    alert("Error toggling Availability. Please try again.");
-                });
-        });
+        var thisQueueId = $t.data('queue-id');
+
+        let currTechs = JSON.parse($('#TechList').val());
+
+        alert('queueIdToIdMap[queueIdStateTracking.lastSelectedIdx["post-click"]]: ' + queueIdToIdMap[queueIdStateTracking.lastSelectedIdx["post-click"]] + '\n'
+            + 'queueIdToIdMap[queueIdStateTracking.prevLastSelectedIdx["post-click"]]: ' + queueIdToIdMap[queueIdStateTracking.prevLastSelectedIdx["post-click"]] + '\n'
+            + 'parseInt($curr.val()): ' + parseInt($curr.val()));
+
+        await checkDataBeforeWritingToJson(currTechs, techId, thisQueueId);
+
+        //set new curr
+
+
+        //reactivate after testing BEGINNING
+        //updateTechListsAfterToggle(thisTechIndex);
+
+        //return new Promise((resolve, reject) => {
+        //    $.post("/Techs/ToggleAvailability", { techId: techId })
+        //        .done(function (response) {
+        //            if (response.success) {
+        //                /*$thisBtn.text(response.isAvailable ? "Deactivate" : "Activate");*/ //<--some version of this?
+        //                //need checks in place before automatically changing button color
+        //                if (imgChild.hasClass('black-to-green')) {
+        //                    imgChild.removeClass('black-to-green').addClass('black-to-red');
+        //                }
+        //                else imgChild.removeClass('black-to-red').addClass('black-to-green');
+        //                //resolve(getAvailableTechsCount()
+        //                //    .then(count => count));
+        //                getAvailableTechsCount().then(count => {
+        //                    resolve(count);
+        //                });
+        //            } else {
+        //                if (response.error.includes("the last tech.")) {
+        //                    alert(response.error);
+        //                    return;
+        //                }
+        //                reject("Error: " + response.error);
+        //            }
+        //        })
+        //        .fail(function (jqXHR) {
+        //            alert("Error toggling Availability. Please try again.");
+        //        });
+        //});
+        //^^reactivate after testing END
 
         //updateAvailableTechsCount();
     });
+
+    $('.btn-row-group div[class*="override-btn"').on("click", function (event) {
+        event.preventDefault();
+        alert("override clique");
+        var $t = $(this);
+        var thisTechIndex = $t.data('parent-index');
+        let currTechs = JSON.parse($('#TechList').val());
+        if (currTechs) {
+            let currTech = currTechs.find(t => t.QueueId === thisTechIndex);
+            if (currTech && currTech.IsAvailable) {
+                currTechs.CurrentSelectee = currTech.QueueId;
+                $curr.val(currTech.QueueId);
+                queueIdStateTracking.currSelecteeIdx["pre-click"] = currTech.QueueId;
+                overrideCurrSelecteeIndex(techViewModels, queueIdToIdMap[currTech.QueueId]);
+                updateDOM(techViewModels, lastSel, currSel, prevLastSel);
+                //alert("new current tech at queue id pos: " + currTech.QueueId);
+            }
+        }
+        //^^MIGHT REMOVE AVAILABLE TECH LIST IN HIDDEN ELEMENT SO I'M NOT UPDATING IN TWO PLACES!
+        const overrideBtn = $t.siblings('div[class*="override-btn"]');
+        //^^compare .data("parent-index") (i.e. queueid) of both
+
+        //if (tech.IsAvailable) {
+        //    if (tech.QueueId === currSel && overrideBtn.hasClass('visible')) {
+        //        overrideBtn.removeClass('visible').addClass('invisible');
+        //    }
+        //    else if (overrideBtn.hasClass('invisible')) {
+        //        overrideBtn.removeClass('invisible').addClass('visible');
+        //    }
+        //}
+        //else {
+        //    overrideBtn.removeClass('visible').addClass('invisible');
+        //}
+    });
+
+    function updateOverrideIsAvailable(techViewModels, queueId) {
+        let tech = techViewModels.find(t => t.QueueId === queueId);
+        tech.IsAvailable = !tech.IsAvailable;
+    }
 
     async function getAvailableTechsCount() {
         try {

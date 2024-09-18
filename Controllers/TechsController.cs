@@ -92,6 +92,10 @@ namespace TechListApp.Controllers
                 {
                     currSelecteeIndex = 2;
                 }
+                else
+                {
+                    currSelecteeIndex = idToQueueIdMap[data.CurrentSelectee];
+                }
                 int lastSelectedIndex;
                 if (!idToQueueIdMap.TryGetValue(data.LastSelectedId, out lastSelectedIndex))
                 {
@@ -195,6 +199,136 @@ namespace TechListApp.Controllers
             return Json(new { success = false, error = "Invalid data" });
         }
 
+        [HttpPost]
+        public IActionResult PrepareDataForApproval([FromBody] TechViewModelData techs)
+        {
+            if (techs?.TechViewModels == null || !techs.TechViewModels.Any())
+            {
+                return Json(new { success = false, message = "No techs available." });
+            }
+            var isToggleRequest = techs.IsToggleRequest;
+            var toggleTechId = techs.ToggleTechId;
+
+            var data = _techService.ReadFromJson();
+
+            var currSelecteeQueueId = techs.CurrentSelectee;
+
+            var vmTech = techs.TechViewModels.Find(t => t.QueueId == currSelecteeQueueId);
+            if (vmTech == null)
+            {
+                return Json(new { success = false, message = "Current selectee not found." });
+            }
+            //var prevLastSelectedId = techs.PrevLastSelectedId;
+
+            var techId = vmTech.Id;
+
+            //var techViewModels = data.Techs.Select(t => new TechViewModel
+            //{
+            //    Id = t.Id,
+            //    Name = t.Name,
+            //    IsAvailable = t.IsAvailable,
+            //    QueueId = techs.TechViewModels.FirstOrDefault(vm => vm.Id == t.Id)?.QueueId ?? 0
+            //}).ToList();
+
+
+
+
+            if (isToggleRequest.HasValue && isToggleRequest.Value)
+            {
+                var techInData = data.Techs.Find(t => t.Id == toggleTechId);
+                if (techInData == null)
+                {
+                    return Json(new { success = false, message = "Technician not found in data." });
+                }
+                techInData.IsAvailable = !techInData.IsAvailable;
+
+                var techViewModels = data.Techs.Select(t =>
+                {
+                    var vm = techs.TechViewModels.Find(vm => vm.Id == t.Id);
+                    return new TechViewModel
+                    {
+                        Id = t.Id,
+                        Name = t.Name,
+                        IsAvailable = t.IsAvailable,
+                        QueueId = vm != null ? vm.QueueId : 0
+                    };
+                }).ToList();
+
+                // Serialize the updated data for user approval
+                string jsonData = System.Text.Json.JsonSerializer.Serialize(data);
+
+                //int currSelecteeIndex = availableTechs.FindIndex(t => t.Id == currSelecteeId);
+                //^^for finding the first index of availableTechs to begin iteration
+                return Json(new
+                {
+                    success = true,
+                    jsonData,
+                });
+
+            }
+
+            JsonResult result = CalculateCurrentSelectee(techs.TechViewModels, techs.LastSelectedId, techs.PrevLastSelectedId);
+
+            Console.WriteLine(result);
+
+
+            //extract queueId from result
+            dynamic jsonResponse = result.Value;
+            currSelecteeQueueId = -1;
+
+            if (jsonResponse.success)
+            {
+                currSelecteeQueueId = jsonResponse.queueId;
+
+                var currentTech = techs.TechViewModels.FirstOrDefault(t => t.QueueId == currSelecteeQueueId);
+                //^^just identifying the current tech from the original bunch, "available" status
+                //not necess needed
+
+                if (currentTech != null)
+                {
+                    var currTechData = _techService.ReadFromJson();
+
+                    //update json file (lastselectedid & prevlastselectedid already have this done)
+                    //data.CurrentSelectee = currentTech.Id;
+                    //_techService.WriteToJson(data);
+                    currTechData.CurrentSelectee = currentTech.Id;
+                    string jsonData = System.Text.Json.JsonSerializer.Serialize(currTechData);
+
+                    return Json(new {success = true, jsonData});    
+                }
+                else
+                {
+                    return Json(new { success = false, message = "Failed to find current selection." });
+                }
+
+            }
+            else
+            {
+                return result;
+            }
+        }
+
+        [HttpPost]
+        public IActionResult WriteApprovedData([FromBody] TechData approvedData)
+        {
+            try
+            {
+                if (approvedData == null || approvedData.Techs == null)
+                {
+                    Console.WriteLine("Approved data is null or incomplete.");
+                    return Json(new { success = false, message = "Received null or incomplete data." });
+                }
+                Console.WriteLine("Data to be written: " + System.Text.Json.JsonSerializer.Serialize(approvedData));
+                _techService.WriteToJson(approvedData);
+                Console.WriteLine("Data written successfully to JSON.");
+                return Json(new { success = true, message = "Data written successfully!" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error writing data: {ex.Message}" });
+            }
+        }
+
         [HttpGet]
         public JsonResult GetAllTechViewModels()
         {
@@ -243,7 +377,40 @@ namespace TechListApp.Controllers
         }
 
         [HttpPost]
-        public IActionResult GetCurrentSelectee([FromBody] TechViewModelData techs)
+        public IActionResult OverrideCurrentSelectee(int techId)
+        {
+            try
+            {
+                var data = _techService.ReadFromJson();
+                var techs = data.Techs;
+                if (techs == null || !techs.Any())
+                {
+                    return Json(new { success = false, message = "No techs available." });
+                }
+                var selectedTech = techs.FirstOrDefault(t => t.Id == techId);
+
+                if (selectedTech != null)
+                {
+                    data.CurrentSelectee = selectedTech.Id;
+
+                    _techService.WriteToJson(data);
+
+                    return Json(new { success = true, message = "Current selectee has been overridden.", currentSelectee = data.CurrentSelectee });
+                }
+                else
+                {
+                    // If the techId does not match any tech
+                    return Json(new { success = false, message = "Tech not found." });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public IActionResult GetCurrentSelectee([FromBody] TechViewModelData techs, bool? isToggleRequest)
         {
             if (techs?.TechViewModels == null || !techs.TechViewModels.Any())
             {
@@ -263,6 +430,30 @@ namespace TechListApp.Controllers
             {
                 return Json(new { success = false, message = "No techs available." });
             }
+
+            if(isToggleRequest.HasValue && isToggleRequest.Value)
+            {
+                var currTech = availableTechs.FirstOrDefault(t => t.Id == currSelecteeId);
+                if (currTech == null)
+                {
+                    return Json(new { success = false, message = "Current selectee not found." });
+                }
+                var nextAvailableTech = availableTechs.FirstOrDefault(t => t.QueueId > currTech.QueueId)
+                        ?? availableTechs.First(); // Wrap-around to first available if none found
+
+                //int currSelecteeIndex = availableTechs.FindIndex(t => t.Id == currSelecteeId);
+                //^^for finding the first index of availableTechs to begin iteration
+                return Json(new
+                {
+                    success = true,
+                    techs = techViewModels,
+                    //lastSelectedId = data.LastSelectedId, 
+                    currSelectee = nextAvailableTech.QueueId,
+                    //prevLastSelectedId = data.PrevLastSelectedId 
+                });
+
+            }
+
 
             //var techs = data.Techs
             //    .Select(t => new TechViewModel
@@ -530,6 +721,20 @@ namespace TechListApp.Controllers
 
         }
 
+        public void SoftToggleAvailability(TechViewModel tech)
+        {
+            tech.IsAvailable = !tech.IsAvailable;
+            //try
+            //{
+            //    ToggleTechAvailability(tech); // Call the internal method
+            //    return Json(new { success = true, isAvailable = tech?.IsAvailable });
+            //}
+            //catch (Exception ex)
+            //{
+            //    return Json(new { success = false, error = ex.Message });
+            //}
+        }
+
         [HttpPost]
         public JsonResult ToggleAvailability(int techId)
         {
@@ -554,6 +759,11 @@ namespace TechListApp.Controllers
             {
                 return Json(new {success = false, error = ex.Message});
             }
+        }
+
+        private void ToggleTechAvailability(TechViewModel tech)
+        {
+            tech.IsAvailable = !tech.IsAvailable;
         }
 
         [HttpPost]

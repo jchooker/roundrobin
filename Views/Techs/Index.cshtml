@@ -42,6 +42,24 @@
 } *@
 <input type="hidden" id="techViewModels" value="@Html.Raw(Json.Serialize(Model.Techs))" />
 <div class="container-fluid" data-last-selected-index="@Model.LastSelectedIndex" data-prev-last-selected-index="@Model.PrevLastSelectedIndex">
+    <div class="modal fade" id="jsonModal" tabindex="-1" aria-labelledby="jsonModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Review Data</h5>
+                    <button type="button" id="cancelBtn1" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <pre id="jsonDataDisplay"></pre> <!-- This will display the JSON data -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="cancelBtn2" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button> <!-- Cancel button -->
+                    <button type="button" id="approveButton" class="btn btn-primary">OK</button> <!-- Approve button -->
+                </div>
+            </div>
+        </div>
+    </div>
+
 @*     @for (int i = 0; i < Model.Techs.Count; i++) *@
     @foreach (var tech in Model.Techs)
     {
@@ -79,7 +97,7 @@
                 <img src="~/img/toggle1.webp" class="rounded img-fluid @(isAvailable ? "black-to-green" : "black-to-red")" alt="toggle" />
             </div>
             @* ^^need to have these update themselves in json file when the user deactivates *@
-            <div class="@techButtonClasses @disabledAttrib @isBasicBtn tech-queue-btn-@tech.QueueId" data-index="@tech.QueueId" data-added-as-id="@tech.QueueId" aria-disabled="@ariaDisabled" data-id="@tech.Id">
+            <div class="@techButtonClasses @disabledAttrib @isBasicBtn tech-queue-btn-@tech.QueueId" data-index="@tech.QueueId" data-added-as-id="@tech.QueueId" aria-disabled="@ariaDisabled" data-id="@tech.Id" data-queue-id="@tech.QueueId">
                 <h2>@tech.Name</h2>
             </div>
             <div class="@auxBtnClasses opacity-50 ms-4 override-btn-@tech.QueueId @overrideVisibility" data-parent-index="@tech.QueueId" data-id="@tech.Id" data-queue-id="@tech.QueueId">

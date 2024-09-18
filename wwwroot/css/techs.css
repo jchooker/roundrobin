@@ -12,22 +12,22 @@
 }
 
 .slide-in-success {
-    transition: background-color 0.5s ease-in, color 0.5s ease-in, border-color 0.5s ease-in, border-width 0.5s ease-in, border-color 0.5s ease-in;
+    transition: background-color 0.4s ease-in, color 0.4s ease-in, border-color 0.4s ease-in, border-width 0.4s ease-in, border-color 0.4s ease-in;
 }
 
 .slide-danger-to-success,
 .slide-out-success-false,
 .slide-out-success,
 .slide-out-danger {
-    transition: background-color 0.5s ease-in, color 0.5s ease-in, border-color 0.5s ease-in;
+    transition: background-color 0.4s ease-in, color 0.4s ease-in, border-color 0.4s ease-in;
 }
 
 .override-visible {
-    transition: visibility 0.3s ease-in;
+    transition: visibility 0.4s ease-in;
 }
 
 .override-invisible {
-    transition: visibility 0.3s ease-in;
+    transition: visibility 0.4s ease-in;
 }
 
 @keyframes slide-in-success {
@@ -45,7 +45,7 @@
 }
 
 .btn-success-in-1 {
-    animation: slide-in-success 0.5s ease-in;
+    animation: slide-in-success 0.4s ease-in;
 }
 
 @keyframes slide-out-success-false {
@@ -63,7 +63,7 @@
 }
 
 .btn-success-out-false {
-    animation: slide-out-success-false 0.5s ease-in;
+    animation: slide-out-success-false 0.4s ease-in;
 }
 
 @keyframes slide-out-success {
@@ -83,7 +83,7 @@
 }
 
 .btn-success-out-1 {
-    animation: slide-out-success 0.5s ease-in;
+    animation: slide-out-success 0.4s ease-in;
 }
 
 @keyframes slide-out-danger {
@@ -99,7 +99,7 @@
 }
 
 .btn-danger-out-1 {
-    animation: slide-out-danger 0.5s ease-in;
+    animation: slide-out-danger 0.4s ease-in;
 }
 
 @keyframes slide-danger-to-success {
@@ -117,7 +117,7 @@
 }
 
 .btn-danger-to-success {
-    animation: slide-danger-to-success 0.5s ease-in;
+    animation: slide-danger-to-success 0.4s ease-in;
 }
 
 .hover-effect-1:hover {
