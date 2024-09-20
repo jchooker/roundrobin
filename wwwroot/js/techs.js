@@ -12,10 +12,11 @@
     var $prev = $('#PrevLastSelectedIndex');
     console.log($last.val());
     var lastSel = parseInt($last.val());
-    console.log("pre-click lastSel in hidden elem: " + lastSel);
+    console.log("pre-click lastSel in hidden elem: " + lastSel + "\n and $last.val: " + parseInt($last.val()));
     var currSel = parseInt($curr.val());
     console.log("pre-click currSel in hidden elem: " + currSel)
     var prevLastSel = parseInt($prev.val());
+    console.log("pre-click prevLastSel in hidden elem: " + $prev.val());
     var queueIdStateTracking = {
         currSelecteeIdx: {
             "pre-click": currSel,
@@ -443,8 +444,11 @@
         }
     }
 
-    async function checkDataBeforeWritingToJson(techs, toggleTechId, techQueueId) {
-        try {
+    async function checkDataBeforeWritingToJson(techs, toggleTechId, techQueueId) { //toggleTechId & techQueueId return
+        //alert("beginning of checkData js function \n currentSelectee: " + parseInt($curr.val()) + "\nlastSelected (from dict): " +
+            //queueIdStateTracking.lastSelectedIdx["pre-click"] + "\nprevLastSelected (pre-click): " +
+            //queueIdStateTracking.prevLastSelectedIdx["pre-click"]);
+        try { //...the (queue)id of the tech whose toggle button was just clicked
             const response = await $.ajax({
                 url: "/Techs/PrepareDataForApproval",
                 type: "POST",
@@ -453,9 +457,11 @@
                 data: JSON.stringify({
                     techViewModels: techs,
                     toggleTechId: toggleTechId,
-                    currSelectee: parseInt($curr.val()),
-                    lastSelectedId: queueIdToIdMap[queueIdStateTracking.lastSelectedIdx["post-click"]],
-                    prevLastSelectedId: queueIdToIdMap[queueIdStateTracking.prevLastSelectedIdx["post-click"]],
+                    currentSelectee: parseInt($curr.val()),
+                    lastSelectedId: queueIdStateTracking.lastSelectedIdx["pre-click"],
+                    prevLastSelectedId: queueIdStateTracking.prevLastSelectedIdx["pre-click"],
+                    //^^changed from post- to pre-click, because the toggle btn isn't generally meant to advance
+                    //the queue
                     isToggleRequest: true
                 })
             });
@@ -481,6 +487,10 @@
                 $('#cancelBtn2').off('click').on('click', function () {
                     alert("Data write canceled by user.");
                 });
+            } else if (!response.success && response.message.includes("deactivate last tech")) {
+                alert(response.message);
+            } else {
+                alert(response.message);
             }
         } catch (err) {
             alert("Error preparing data: " + err);
@@ -489,7 +499,8 @@
 
     async function writeApprovedData(jsonData, techQueueId) {
         try {
-            const finalMsg = "FINAL APPROVAL: Send this data to server?: \n" + JSON.stringify(JSON.parse(jsonData), null, 2);
+            const finalMsg = "FINAL APPROVAL: " + "techQueueId value: " + techQueueId +
+                " ; hidden html 'curr' value: " + parseInt($curr.val()) + "\n \n Send this data to server?: \n" + JSON.stringify(JSON.parse(jsonData), null, 2);
             const finalApproval = confirm(finalMsg);
             if (finalApproval) {
                 const response = await $.ajax({
@@ -502,7 +513,18 @@
 
                 if (response.success) {
                     alert(response.message);
-                    if (techQueueId == $curr)
+                    //if (techQueueId == parseInt($curr.val()))
+                    //$curr.val(techQueueId);
+                    $curr.val(response.currentSelectee);
+                    $last.val(response.lastSelected);
+                    $prev.val(response.prevLastSelected);
+
+                    // Update the tracking object as well
+                    queueIdStateTracking.currSelecteeIdx["post-click"] = parseInt($curr.val());
+                    queueIdStateTracking.lastSelectedIdx["post-click"] = parseInt($last.val());
+                    queueIdStateTracking.prevLastSelectedIdx["post-click"] = parseInt($prev.val());
+
+                    updateDOM(techViewModels, queueIdStateTracking.lastSelectedIdx["post-click"], queueIdStateTracking.currSelecteeIdx["post-click"], queueIdStateTracking.prevLastSelectedIdx["post-click"]);
                 } else {
                     alert("Error: " + response.message);
                 }
