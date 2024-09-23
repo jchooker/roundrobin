@@ -185,7 +185,7 @@ namespace TechListApp.Controllers
                 return Json(new { success = false, message = "Technician not found in data." });
             }
 
-            if (data.Techs.Count(t => t.IsAvailable == true) <= 1)
+            if (data.Techs.Count(t => t.IsAvailable == true) <= 1 && techInData.IsAvailable)
             {
                 return Json(new { success = false, message = "Cannot deactivate the last technician!" });
             }
@@ -321,7 +321,8 @@ namespace TechListApp.Controllers
                     message = "Data written successfully!",
                     currentSelectee = approvedData.CurrentSelectee,
                     lastSelected = approvedData.LastSelectedId,
-                    prevLastSelected = approvedData.PrevLastSelectedId
+                    prevLastSelected = approvedData.PrevLastSelectedId,
+                    techs = approvedData.Techs
                 });
             }
             catch (Exception ex)

@@ -155,21 +155,6 @@
         }
     }
 
-    function findNextActiveIndex(currentIndex) {
-        const totalButtons = techButtons.length;
-        let nextIndex = (currentIndex + 1) % totalButtons;
-
-        while ($(techButtons[nextIndex]).attr('aria-disabled')) {
-            nextIndex = (nextIndex + 1) % totalButtons;
-            if (nextIndex == currentIndex) {
-                //to stop loop
-                break;
-            }
-        }
-
-        return nextIndex;
-    }
-
     const connection = new signalR.HubConnectionBuilder()
         .withUrl("/listhub")
         .build();
@@ -195,6 +180,47 @@
             if (classes.length > 0) element.removeClass(classes.join(" "));
         });
 
+    }
+
+    function updateAfterTogglingOffCurrentSelectee(techs, lastSelectedIndex, currentSelectee) {
+        var currTech = $('div.tech-queue-btn-' + currentSelectee);
+        var lastTech = $('div.tech-queue-btn-' + lastSelectedIndex);
+        var substrings1 = ["text-", "border-"]
+
+        //if the button you deactivate is success btn, and it must
+        //1. go from white to green
+        //2. go from red to green
+        //3. go from green to green
+        //4. go from 
+        //lastTech.removeClass('btn-success');
+        //lastTech.addClass('')
+        if (currTech.hasClass('btn-basic-light')) {
+            currTech.addClass('btn-success-in-1').removeClass('disabled');
+            setTimeout(() => {
+                clearOutClassesWithSubstring(currTech, substrings1);
+                currTech.removeClass('btn-success-in-1 btn-basic-light')
+                    .addClass('btn-success text-warning border-warning')
+                    .prop("aria-disabled", "false");
+            }, 400);
+        }
+        else if (currTech.hasClass('btn-danger')) {
+            currTech.addClass('btn-danger-to-success').removeClass('disabled');
+            setTimeout(() => {
+                clearOutClassesWithSubstring(currTech, substrings1);
+                currTech.removeClass('btn-danger-to-success btn-danger')
+                    .addClass('btn-success text-warning border-warning')
+                    .prop("aria-disabled", "false");
+            }, 400);
+        }
+        else if (currTech.hasClass('btn-success')) {
+            currTech.addClass('btn-success-out-false-2').removeClass('disabled');
+            setTimeout(() => {
+                clearOutClassesWithSubstring(currTech, substrings1);
+                currTech.removeClass('btn-success-out-false-2')
+                    .addClass('btn-success text-warning border-warning')
+                    .prop("aria-disabled", "false");
+            }, 400);
+        }
     }
 
     function updateDOM(techs, lastSelectedIndex, currentSelectee, prevLastSelectedIndex) { //does not need
@@ -291,84 +317,6 @@
                 } else {
                     overrideBtn.removeClass('visible').addClass('invisible');
                 }
-
-                //**********BEGIN NEED TO REACTIVATE*/
-                //if (availableTechs > 2) { //how to handle ones that went from lastassigned to regular white?
-                //    if (isCurrentSelectee) {
-                //        $t.addClass('btn-success-in-1').removeClass('disabled');
-                //        setTimeout(() => {
-                //            $t.removeClass('btn-success-in-1 border-secondary text-secondary')
-                //                .addClass('btn-success text-warning border-warning')
-                //                .prop("aria-disabled", "false");
-                //        }, 500);
-                //        //setTimeout(() => {
-                //        //    $(this).removeClass('btn-success-in-1 border-secondary text-secondary')
-                //        //        .addClass('btn-success text-warning border-warning')
-                //        //        .prop("aria-disabled", "false");
-                //        //}, 500);
-                //    }
-                //    else if (isLastAssigned) {
-                //        $t.addClass('btn-success-out-1').addClass('disabled');
-                //        setTimeout(() => {
-                //            $t.removeClass('btn-success-out-1 btn-success text-warning border-warning')
-                //                .addClass('btn-danger border-secondary text-light')
-                //                .prop("aria-disabled", "true");
-                //        }, 500);
-                //    }
-                //    else {
-                //        $t.addClass('button-danger-out-1')
-                //        setTimeout(() => {
-                //            $t.removeClass('btn-danger-out-1 btn-danger text-light')
-                //                .addClass('text-secondary')
-                //            if (!$t.hasClass('disabled')) $t.addClass('disabled');
-                //            var $ad = $t.attr('aria-disabled');
-                //            if ($ad !== undefined && $ad === "false") $t.attr("aria-disabled", "true");
-                //        }, 500);
-                //    }
-                //}
-
-                //else if (availableTechs === 2) {
-                //    if (isCurrentSelectee) {
-                //        $t.addClass('btn-danger-to-success').removeClass('disabled');
-                //        setTimeout(() => {
-                //            $t.removeClass('btn-danger-to-success btn-danger text-light border-secondary')
-                //                .addClass('btn-success text-warning border-warning')
-                //                .prop("aria-disabled", "false");
-                //        }, 500);
-                //    }
-                //    else if (isLastAssigned) {
-                //        $t.addClass('btn-success-out-1').addClass('disabled');
-                //        setTimeout(() => {
-                //            $t.removeClass('btn-success-out-1 btn-success text-warning border-warning')
-                //                .addClass('btn-danger border-secondary text-light')
-                //                .prop("aria-disabled", "true");
-                //        }, 500);
-                //    }
-                //    else {
-                //        $t.addClass('button-danger-out-1')
-                //        setTimeout(() => {
-                //            $t.removeClass('btn-danger-out-1 btn-danger text-light')
-                //                .addClass('text-secondary')
-                //            if (!$t.hasClass('disabled')) $t.addClass('disabled');
-                //            var $ad = $t.attr('aria-disabled');
-                //            if ($ad !== undefined && $ad === "false") $t.attr("aria-disabled", "true");
-                //        }, 500);
-                //    }
-                //}
-
-                //else if (availableTechs === 1) {
-                //    if (isCurrentSelectee) {
-                //        $t.addClass('btn-success-out-false');
-                //        //do any of the isLastAssigned or prevLastAssigned settings need to be addressed
-                //        //here? should we just leave them as they were?
-                //        setTimeout(() => {
-                //            $t.removeClass('btn-success-out-false');
-                //        }, 500);
-                //    }
-                //}
-                //********END NEED TO REACTIVATE*/
-
-
             }
 
         });
@@ -416,34 +364,6 @@
         }
     }
 
-    function updateTechListsAfterToggle(thisTechIndex) {
-        let currTechs = JSON.parse($('#TechList').val());
-        if (currTechs) {
-            let currTech = currTechs.find(t => t.QueueId === thisTechIndex);
-
-            currTech.IsAvailable = !currTech.IsAvailable;
-            let currTechAvailability = currTech.IsAvailable;
-            $('#TechList').val(JSON.stringify(currTechs));
-
-            let availableTechs = currTechs.filter(t => t.IsAvailable);
-            $('#AvailableTechList').val(JSON.stringify(availableTechs));
-
-            console.log('*&*&*&*& RESET CHECK FOR CURR =' + parseInt($curr.val()));
-
-            //keep using previously-set index values (from html hidden elements)
-            //bc only "current" changes with toggle click
-            if (!currTechAvailability && parseInt($curr.val()) == thisTechIndex) {
-                calculateNextSelectee(currTechs, $("#LastSelectedIndex").val(), true).then(nextSelectee => {
-                    $('#CurrentSelectee').val(nextSelectee);
-                    queueIdStateTracking.currSelecteeIdx["pre-click"] = nextSelectee;
-                    //queueIdStateTracking.currSelecteeIdx["post-click"] = null;
-                    updateDOM(currTechs, $('#LastSelectedIndex').val(), nextSelectee, $('#PrevLastSelectedIndex').val())
-                });
-            }
-            //alert("tech deactivated at queue id pos: " + currTech.QueueId);
-        }
-    }
-
     async function checkDataBeforeWritingToJson(techs, toggleTechId, techQueueId) { //toggleTechId & techQueueId return
         //alert("beginning of checkData js function \n currentSelectee: " + parseInt($curr.val()) + "\nlastSelected (from dict): " +
             //queueIdStateTracking.lastSelectedIdx["pre-click"] + "\nprevLastSelected (pre-click): " +
@@ -477,15 +397,19 @@
                 $('#jsonDataDisplay').text("Please review the data:\n\n" + JSON.stringify(JSON.parse(jsonData), null, 2) + "\n\nDo you approve?");
                 $('#jsonModal').modal('show');
                 //approve btn click
-                $('#approveButton').off('click').on('click', async function () {
-                    $('#jsonModal').modal('hide');
-                    await writeApprovedData(jsonData, techQueueId);
-                });
-                $('#cancelBtn1').off('click').on('click', function () {
-                    alert("Data write canceled by user.");
-                });
-                $('#cancelBtn2').off('click').on('click', function () {
-                    alert("Data write canceled by user.");
+                return new Promise((resolve, reject) => {
+
+                    $('#approveButton').off('click').on('click', async function () {
+                        $('#jsonModal').modal('hide');
+                         await writeApprovedData(jsonData, techQueueId);
+                        resolve(true);
+                    });
+                    $('#cancelBtn1, #cancelBtn2').off('click').on('click', function () {
+                        $('#jsonModal').modal('hide');
+                        alert("Data write canceled by user.");
+                        resolve(false);
+                    });
+
                 });
             } else if (!response.success && response.message.includes("deactivate last tech")) {
                 alert(response.message);
@@ -519,12 +443,18 @@
                     $last.val(response.lastSelected);
                     $prev.val(response.prevLastSelected);
 
+                    techViewModels = response.techs;
+
+                    $('#TechList').val(JSON.stringify(techViewModels));
+                    $('#AvailableTechList').val(JSON.stringify(techViewModels.filter(function (t) { return t.IsAvailable; })));
+
                     // Update the tracking object as well
                     queueIdStateTracking.currSelecteeIdx["post-click"] = parseInt($curr.val());
                     queueIdStateTracking.lastSelectedIdx["post-click"] = parseInt($last.val());
                     queueIdStateTracking.prevLastSelectedIdx["post-click"] = parseInt($prev.val());
 
-                    updateDOM(techViewModels, queueIdStateTracking.lastSelectedIdx["post-click"], queueIdStateTracking.currSelecteeIdx["post-click"], queueIdStateTracking.prevLastSelectedIdx["post-click"]);
+                    //updateDOM(techViewModels, queueIdStateTracking.lastSelectedIdx["post-click"], queueIdStateTracking.currSelecteeIdx["post-click"], queueIdStateTracking.prevLastSelectedIdx["post-click"]);
+                    updateAfterTogglingOffCurrentSelectee(techViewModels, queueIdStateTracking.lastSelectedIdx["post-click"], queueIdStateTracking.currSelecteeIdx["post-click"])
                 } else {
                     alert("Error: " + response.message);
                 }
@@ -555,7 +485,29 @@
             + 'queueIdToIdMap[queueIdStateTracking.prevLastSelectedIdx["post-click"]]: ' + queueIdToIdMap[queueIdStateTracking.prevLastSelectedIdx["post-click"]] + '\n'
             + 'parseInt($curr.val()): ' + parseInt($curr.val()));
 
-        await checkDataBeforeWritingToJson(currTechs, techId, thisQueueId);
+        checkDataBeforeWritingToJson(currTechs, techId, thisQueueId)
+            .then(function (success)
+            {
+                if (success) {
+                    if (imgChild.hasClass('black-to-green')) {
+                        imgChild.removeClass('black-to-green')
+                            .addClass('black-to-red');
+                        $(`div.override-btn-${thisQueueId}`)
+                            .removeClass('visible')
+                            .addClass('invisible');
+                    }
+                    else if (imgChild.hasClass('black-to-red')) {
+                        imgChild.removeClass('black-to-red')
+                            .addClass('black-to-green');
+                        if (thisQueueId != parseInt($curr.val())) {
+                            $(`div.override-btn-${thisQueueId}`)
+                                .removeClass('invisible')
+                                .addClass('visible');
+                        }
+                    }
+                }
+
+            });
 
         //set new curr
 
