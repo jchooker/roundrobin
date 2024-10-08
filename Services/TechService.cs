@@ -16,11 +16,12 @@ namespace TechListApp.Services
 
     public class TechViewModelData
     {
-        public int CurrentSelectee { get; set; }
-        public int LastSelectedId { get; set; }
-        public int PrevLastSelectedId { get; set; }
+        public int? CurrentSelectee { get; set; }
+        public int LastSelectedIndex { get; set; }
+        public int PrevLastSelectedIndex { get; set; }
         public bool? IsToggleRequest { get; set; }
-        public int ToggleTechId { get; set; }
+        public bool? IsOverrideRequest { get; set; }
+        public int? ToggleOrOverrideTechId { get; set; }
         [JsonPropertyName("techViewModels")]
         public List<TechViewModel> TechViewModels { get; set; } = new List<TechViewModel>();
     }

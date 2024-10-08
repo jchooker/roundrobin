@@ -6,6 +6,7 @@
 @Html.Hidden("PrevLastSelectedIndex", Model.PrevLastSelectedIndex, new {id = "PrevLastSelectedIndex"})
 @Html.Hidden("TechList", JsonConvert.SerializeObject(Model.Techs), new {id = "TechList"})
 @Html.Hidden("AvailableTechList", JsonConvert.SerializeObject(Model.Techs.Where(t => t.IsAvailable).ToList()), new {id = "AvailableTechList"})
+
 <script>
     const techViewModels = JSON.parse('@Html.Raw(Json.Serialize(Model.Techs))');
 
@@ -68,7 +69,7 @@
         var isAvailable = tech.IsAvailable;
         var isCurrentSelectee = tech.QueueId == Model.CurrentSelectee;
         var isPrevLastAssigned = tech.QueueId == Model.PrevLastSelectedIndex;
-        var isBasicBtn = (!isCurrentSelectee && !isLastAssigned) ? "btn-basic-light" : "";
+        var isBasicBtn = (!isCurrentSelectee && !isLastAssigned) ? "btn-basic-light text-secondary" : "";
         @* var isOnlyOneActive = (tech.IsAvailable && activeCount == 1); *@
         var isNextActive = isAvailable && !isLastAssigned; //<--not for scenarios where there is only 1 though?
 
@@ -105,6 +106,11 @@
             </div>
         </div>
     }
+    <div class="row d-flex justify-content-center">
+        <div class="col-8" id="real-time-values" data-curr="0" data-last="0" data-prev="0">
+
+        </div>
+    </div>
 </div>
 @*   %%%%%%%%%%  //{
        //var tech = Model.Techs[i]; %%%%%%%%%%%%*@
